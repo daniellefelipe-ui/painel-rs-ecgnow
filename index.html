@@ -351,6 +351,7 @@
 <div id="toast" class="hidden"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // ================================================================
 // CONFIG
@@ -605,6 +606,7 @@ async function renderCandidatos() {
                     <button class="vtbtn active" id="cv-btn-lista" onclick="setCandView('lista')">Lista</button>
                     <button class="vtbtn" id="cv-btn-kanban" onclick="setCandView('kanban')">Kanban</button>
                     <button class="vtbtn" id="cv-btn-ranking" onclick="setCandView('ranking')">Ranking</button>
+                    ${isEcgVaga(v) ? '<button class="vtbtn" id="cv-btn-ecg" onclick="setCandView(\'ecg\')">🫀 Teste ECG</button>' : ''}
                 </div>
                 <button class="btn btn-bronze" onclick="openAddModal()">
                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -832,6 +834,20 @@ async function openCandidatoModal(id) {
                     </button>
                 </div>`}
             </div>
+
+            ${c.teste_ecg ? `
+            <hr>
+            <div class="sec-label">🫀 Teste Prático ECG</div>
+            <div id="ecg-resultado-${id}">
+                ${renderEcgResultado(c.teste_ecg, id)}
+            </div>
+            ` : (c.etapa === 'teste_pratico' && isEcgVaga(c.vaga) ? `
+            <hr>
+            <div class="sec-label">🫀 Teste Prático ECG</div>
+            <div style="background:#f9fafb;border:1px dashed var(--border);border-radius:8px;padding:16px;font-size:.875rem;color:var(--muted)">
+                Ainda sem resultado. Importe as respostas na aba <strong>Teste ECG</strong> da vaga.
+            </div>
+            ` : '')}
 
             ${['entrevista_rh','teste_pratico','entrevista_gestor'].includes(c.etapa) ? `
             <hr>
@@ -1594,11 +1610,12 @@ async function salvarAvaliacao(candId, tipo) {
 // ================================================================
 function setCandView(v) {
     S.subView = v;
-    ['lista','kanban','ranking'].forEach(k => {
+    ['lista','kanban','ranking','ecg'].forEach(k => {
         const btn = document.getElementById('cv-btn-' + k);
         if (btn) btn.classList.toggle('active', k === v);
     });
     if (v === 'ranking') renderRanking();
+    else if (v === 'ecg') renderEcgView();
     else if (S.vaga) loadCandidatos(S.vaga.id);
 }
 
@@ -2056,6 +2073,367 @@ Seções do relatório:
     } catch(err) {
         area.innerHTML = `<span style="color:red">Erro: ${err.message}</span>`;
     }
+}
+
+// ================================================================
+// TESTE ECG
+// ================================================================
+function renderEcgResultado(testeEcg, candidaturaId) {
+    const pct = testeEcg.total_pct ?? 0;
+    const aprovado = testeEcg.aprovado ?? pct >= 75;
+    const cor = aprovado ? '#16a34a' : '#dc2626';
+    const comentario = testeEcg.comentario || '';
+    return `
+        <div style="background:${aprovado ? '#f0fdf4' : '#fef2f2'};border:1px solid ${aprovado ? '#bbf7d0' : '#fecaca'};border-radius:10px;padding:16px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                    <span style="font-size:1.5rem;font-weight:800;color:${cor}">${pct}%</span>
+                    <span style="margin-left:8px;font-size:.875rem;font-weight:600;color:${cor}">${aprovado ? '✅ Aprovado' : '❌ Reprovado'}</span>
+                </div>
+                <span style="font-size:.75rem;color:var(--muted)">Corrigido em ${testeEcg.corrigido_em ? new Date(testeEcg.corrigido_em).toLocaleDateString('pt-BR') : '—'}</span>
+            </div>
+        </div>
+        <div style="margin-bottom:12px">
+            <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:5px">Comentário (Dr. Marco)</label>
+            <textarea id="ecg-comentario-${candidaturaId}" rows="2" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:.875rem;font-family:'Inter',sans-serif;resize:vertical" placeholder="Adicionar comentário sobre o desempenho...">${comentario}</textarea>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="ecgSalvarComentario('${candidaturaId}')">Salvar comentário</button>`;
+}
+
+async function ecgSalvarComentario(candidaturaId) {
+    const textarea = document.getElementById(`ecg-comentario-${candidaturaId}`);
+    if (!textarea) return;
+    const { data: c } = await sb.from('candidaturas').select('teste_ecg').eq('id', candidaturaId).single();
+    if (!c?.teste_ecg) return;
+    const atualizado = { ...c.teste_ecg, comentario: textarea.value };
+    const { error } = await sb.from('candidaturas').update({ teste_ecg: atualizado }).eq('id', candidaturaId);
+    if (error) { toast('Erro ao salvar', 'error'); return; }
+    toast('Comentário salvo!');
+}
+
+function isEcgVaga(v) {
+    const t = (v?.titulo || '').toLowerCase();
+    return t.includes('ecg') || t.includes('médico analista') || t.includes('medico analista');
+}
+
+const ECG_GABARITO = {
+    1:  ['ritmo sinusal','bloqueio de ramo direito','sobrecarga atrial esquerda'],
+    2:  ['ritmo atrial multifocal'],
+    3:  ['ritmo sinusal','bloqueio atrioventricular de segundo grau mobitz i','bloqueio de ramo direito'],
+    4:  ['ritmo sinusal','area eletrica inativa inferior','alteracao de repolarizacao inferolateral'],
+    5:  ['ritmo sinusal','supradesnivelamento de segmento st parede inferolateral','imagem em espelho'],
+    6:  ['troca de eletrodos'],
+    7:  ['bloqueio atrioventricular 2:1','bloqueio de ramo esquerdo'],
+    8:  ['bloqueio atrioventricular total','bloqueio de ramo direito','bloqueio divisional anterossuperior esquerdo'],
+    9:  ['taquicardia supraventricular'],
+    10: ['ritmo juncional bradicardico'],
+    11: ['taquicardia sinusal','sobrecarga ventricular esquerda'],
+    12: ['ritmo sinusal','disturbio de conducao pelo ramo direito','bloqueio divisional anterossuperior esquerdo'],
+    13: ['marcapasso modo aai','bloqueio de ramo esquerdo'],
+    14: ['fibrilacao atrial','marcapasso ventricular vvi'],
+    15: ['marcapasso modo vvi'],
+    16: ['ritmo sinusal para os atrios','marcapasso ventricular vvi'],
+    17: ['fibrilacao atrial','sobrecarga ventricular esquerda'],
+    18: ['ritmo sinusal','area eletrica inativa anterior','area eletrica inativa inferior','sobrecarga ventricular esquerda'],
+    19: ['ritmo sinusal','dentro dos limites da normalidade'],
+    20: ['marcapasso modo aai','sobrecarga ventricular esquerda'],
+    21: ['velocidade incorreta 50mm/s'],
+    22: ['bloqueio atrioventricular total'],
+    23: ['ritmo sinusal','pre-excitacao ventricular intermitente'],
+    24: ['taquicardia ventricular'],
+    25: ['flutter atrial','intervalo qtc prolongado'],
+    26: ['taquicardia supraventricular por reentrada nodal'],
+    27: ['ritmo sinusal','dentro da normalidade para a idade'],
+    28: ['ritmo sinusal','sobrecarga biatrial'],
+    29: ['ritmo sinusal','extrassistole ventricular'],
+    30: ['mobitz i tem alargamento progressivo do pr','mobitz ii tem bloqueio subito com pr fixo'],
+};
+
+let ecgRespostas = [];
+let ecgResultados = [];
+
+function renderEcgView() {
+    const el = document.getElementById('c-content');
+    if (!el) return;
+    ecgRespostas = [];
+    ecgResultados = [];
+    el.innerHTML = `
+        <div style="padding:20px 0">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+                <button class="btn btn-outline" onclick="document.getElementById('ecgFileInput').click()">
+                    📥 Importar Respostas (Excel)
+                </button>
+                <input type="file" id="ecgFileInput" accept=".xlsx,.xls" style="display:none" onchange="ecgImportarExcel(this)">
+                <button class="btn btn-outline" id="ecgBtnExportar" style="display:none" onclick="ecgExportarExcel()">
+                    📤 Exportar Resultado
+                </button>
+                <span style="font-size:.8rem;color:var(--muted)">Planilha com colunas: nome, q1, q2 ... q30</span>
+            </div>
+            <div id="ecgStatus" style="font-size:.875rem;color:var(--muted);margin-bottom:12px"></div>
+            <div id="ecgResultWrap"></div>
+        </div>`;
+}
+
+function ecgImportarExcel(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const wb = XLSX.read(e.target.result, { type: 'array' });
+            const abaNome = wb.SheetNames.find(n => n.toLowerCase().includes('resposta') || n.toLowerCase().includes('formul')) || wb.SheetNames[0];
+            const ws = wb.Sheets[abaNome];
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+            if (rows.length < 2) { toast('Planilha sem dados', 'error'); return; }
+            ecgRespostas = [];
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const nome = (row[2] || '').toString().trim();
+                if (!nome) continue;
+                const obj = { nome };
+                for (let q = 1; q <= 30; q++) obj['q' + q] = (row[2 + q] || '').toString().trim();
+                ecgRespostas.push(obj);
+            }
+            ecgResultados = [];
+            const statusEl = document.getElementById('ecgStatus');
+            if (statusEl) statusEl.textContent = '';
+            const exportBtn = document.getElementById('ecgBtnExportar');
+            if (exportBtn) exportBtn.style.display = 'none';
+            ecgRenderSelecao();
+            toast(`${ecgRespostas.length} candidatos carregados`);
+        } catch(err) { toast('Erro ao ler Excel: ' + err.message, 'error'); }
+    };
+    reader.readAsArrayBuffer(file);
+    input.value = '';
+}
+
+function ecgRenderSelecao() {
+    const wrap = document.getElementById('ecgResultWrap');
+    if (!wrap) return;
+    const itens = ecgRespostas.map((c, i) => `
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;cursor:pointer;transition:background .1s" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''">
+            <input type="checkbox" id="ecgChk_${i}" checked style="width:15px;height:15px;cursor:pointer">
+            <span style="font-size:.875rem;color:var(--text)">${c.nome}</span>
+        </label>`).join('');
+    wrap.innerHTML = `
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+            <div style="padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:#f8fafc">
+                <span style="font-size:.875rem;font-weight:600">${ecgRespostas.length} candidatos encontrados</span>
+                <button class="btn btn-outline btn-sm" onclick="ecgSelecionarTodos(true)">Selecionar todos</button>
+                <button class="btn btn-outline btn-sm" onclick="ecgSelecionarTodos(false)">Limpar seleção</button>
+            </div>
+            <div style="padding:8px 16px;max-height:280px;overflow-y:auto">${itens}</div>
+            <div style="padding:12px 16px;border-top:1px solid var(--border);background:#f8fafc">
+                <button class="btn btn-primary" onclick="ecgCorrigirSelecionados()">▶ Corrigir selecionados</button>
+            </div>
+        </div>`;
+}
+
+function ecgSelecionarTodos(val) {
+    ecgRespostas.forEach((_, i) => { const c = document.getElementById('ecgChk_' + i); if (c) c.checked = val; });
+}
+
+async function ecgCorrigirCandidato(candidato) {
+    const perguntas = Object.entries(ECG_GABARITO).map(([q, comps]) =>
+        `Q${q} (${comps.length} componente${comps.length > 1 ? 's' : ''}):\n  Gabarito: ${comps.join(' | ')}\n  Resposta: "${candidato['q' + q] || '(em branco)'}"`
+    ).join('\n\n');
+
+    const prompt = `Você é um avaliador especialista em eletrocardiografia. Avalie se as respostas do candidato contêm os componentes do gabarito.
+
+REGRAS:
+- Aceite sinônimos e abreviações médicas (ex: RS=ritmo sinusal, BRD=bloqueio de ramo direito, FA=fibrilação atrial, SAE=sobrecarga atrial esquerda, SVE=sobrecarga ventricular esquerda, BAVT=bloqueio atrioventricular total, TV=taquicardia ventricular, MP=marcapasso, BRE=bloqueio de ramo esquerdo, BDASE=bloqueio divisional anterossuperior esquerdo, ZEI=zona/área elétrica inativa, ARV=alteração de repolarização ventricular, TPSV=taquicardia supraventricular, TRN=taquicardia por reentrada nodal, WPW=wolf-parkinson-white, etc.)
+- Para Q21: aceite qualquer menção a velocidade 50mm/s ou velocidade errada/dobrada
+- Para Q16: o candidato DEVE mencionar tanto ritmo sinusal nos átrios QUANTO marcapasso ventricular VVI
+- Seja generoso com variações de escrita desde que o conceito esteja correto
+
+QUESTÕES:
+${perguntas}
+
+Responda APENAS com JSON:
+{"resultados":[{"q":1,"presentes":[true,false,true]},{"q":2,"presentes":[true]},...]}`;
+
+    const resp = await fetch('https://ecg-proxy-18dw.vercel.app/api/corrigir', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1024, messages: [{ role: 'user', content: prompt }] }),
+    });
+    if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error?.message || `HTTP ${resp.status}`); }
+    const data = await resp.json();
+    const match = data.content[0].text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('Resposta inválida da API');
+    return JSON.parse(match[0]);
+}
+
+async function ecgCorrigirSelecionados() {
+    const selecionados = ecgRespostas.filter((_, i) => { const c = document.getElementById('ecgChk_' + i); return c && c.checked; });
+    if (!selecionados.length) { toast('Selecione ao menos um candidato', 'error'); return; }
+
+    const wrap = document.getElementById('ecgResultWrap');
+    if (wrap) wrap.innerHTML = '';
+    const exportBtn = document.getElementById('ecgBtnExportar');
+    if (exportBtn) exportBtn.style.display = 'none';
+    ecgResultados = [];
+
+    const statusEl = document.getElementById('ecgStatus');
+
+    for (let i = 0; i < selecionados.length; i++) {
+        const candidato = selecionados[i];
+        if (statusEl) statusEl.textContent = `⏳ Corrigindo ${i + 1}/${selecionados.length}: ${candidato.nome}...`;
+        try {
+            const resultado = await ecgCorrigirCandidato(candidato);
+            const notas = []; let totalPontos = 0;
+            for (let q = 1; q <= 30; q++) {
+                const gabComp = ECG_GABARITO[q];
+                const resQ = resultado.resultados?.find(r => r.q === q);
+                const presentes = resQ?.presentes || gabComp.map(() => false);
+                const acertos = presentes.filter(Boolean).length;
+                const nota = parseFloat((acertos / gabComp.length).toFixed(4));
+                notas.push(nota); totalPontos += nota;
+            }
+            ecgResultados.push({ nome: candidato.nome, notas, total: parseFloat(totalPontos.toFixed(2)), respostas: candidato });
+        } catch(err) {
+            ecgResultados.push({ nome: candidato.nome, notas: Array(30).fill(0), total: 0, erro: err.message });
+            toast(`Erro em ${candidato.nome}: ${err.message}`, 'error');
+        }
+        if (i < selecionados.length - 1) await new Promise(r => setTimeout(r, 800));
+    }
+
+    if (statusEl) statusEl.textContent = `✅ Correção concluída! ${ecgResultados.length} candidatos processados.`;
+    if (exportBtn) exportBtn.style.display = '';
+    ecgRenderTabela();
+    await ecgSalvarNoSupabase();
+}
+
+async function ecgSalvarNoSupabase() {
+    if (!S.vaga?.id || !ecgResultados.length) return;
+
+    // Busca candidaturas da vaga para vincular pelo nome
+    const { data: candidaturas } = await sb.from('candidaturas').select('id, nome').eq('vaga_id', S.vaga.id);
+    if (!candidaturas?.length) return;
+
+    let salvos = 0;
+    for (const resultado of ecgResultados) {
+        if (resultado.erro) continue;
+        const totalPct = Math.round((resultado.total / 30) * 100);
+
+        // Tenta encontrar a candidatura pelo nome (normalizado)
+        const normalizar = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const nomeResultado = normalizar(resultado.nome);
+        const candidatura = candidaturas.find(c => normalizar(c.nome) === nomeResultado)
+            || candidaturas.find(c => normalizar(c.nome).includes(nomeResultado) || nomeResultado.includes(normalizar(c.nome)));
+
+        if (!candidatura) continue;
+
+        const testeEcg = {
+            total_pct: totalPct,
+            aprovado: totalPct >= 75,
+            notas: resultado.notas,
+            corrigido_em: new Date().toISOString(),
+            comentario: '',
+        };
+
+        await sb.from('candidaturas').update({ teste_ecg: testeEcg }).eq('id', candidatura.id);
+        salvos++;
+    }
+
+    if (salvos > 0) toast(`${salvos} resultado(s) salvos no painel`);
+}
+
+function ecgRenderTabela() {
+    if (!ecgResultados.length) return;
+    const wrap = document.getElementById('ecgResultWrap');
+    if (!wrap) return;
+    const thsQ = Array.from({length:30}, (_,i) => `<th style="text-align:center;min-width:40px;font-size:10px;padding:6px 4px">Q${i+1}</th>`).join('');
+    const rows = ecgResultados.map((r, idx) => {
+        const totalPct = Math.round((r.total / 30) * 100);
+        const corNota = totalPct >= 75 ? '#16a34a' : totalPct >= 50 ? '#d97706' : '#dc2626';
+        const tdsQ = r.notas.map(n => {
+            const bg = n >= 1 ? '#dcfce7' : n > 0 ? '#fef9c3' : '#fee2e2';
+            return `<td style="text-align:center;background:${bg};font-size:11px;padding:6px 4px">${Math.round(n*100)}%</td>`;
+        }).join('');
+        const status = totalPct >= 75 ? '<span style="color:#16a34a;font-size:11px">✅ Aprovado</span>' : '<span style="color:#dc2626;font-size:11px">❌ Reprovado</span>';
+        const erroTag = r.erro ? `<span title="${r.erro}" style="color:#ef4444;margin-left:4px">⚠️</span>` : '';
+        return `<tr style="cursor:pointer" onclick="ecgVerDetalhe(${idx})" title="Clique para ver detalhes">
+            <td style="font-size:.875rem;white-space:nowrap;padding:8px 14px;position:sticky;left:0;background:white">${r.nome}${erroTag}</td>
+            ${tdsQ}
+            <td style="text-align:center;font-weight:700;color:${corNota};padding:8px 10px;position:sticky;right:60px;background:white">${totalPct}%</td>
+            <td style="padding:8px 10px;position:sticky;right:0;background:white">${status}</td>
+        </tr>`;
+    }).join('');
+    wrap.innerHTML = `
+        <div style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:.875rem;font-weight:600">${ecgResultados.length} candidatos · clique para ver detalhes</span>
+            <span style="font-size:.75rem;color:var(--muted)">Verde = acerto total · Amarelo = parcial · Vermelho = zero · Aprovação ≥75%</span>
+        </div>
+        <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px">
+            <table style="width:100%;border-collapse:collapse;font-size:.8rem">
+                <thead style="background:#f8fafc">
+                    <tr>
+                        <th style="text-align:left;padding:8px 14px;min-width:200px;position:sticky;left:0;background:#f8fafc;border-bottom:1px solid var(--border)">Candidato</th>
+                        ${thsQ}
+                        <th style="text-align:center;min-width:60px;padding:6px;position:sticky;right:60px;background:#f8fafc;border-bottom:1px solid var(--border)">Total</th>
+                        <th style="min-width:90px;padding:6px;position:sticky;right:0;background:#f8fafc;border-bottom:1px solid var(--border)">Status</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>`;
+}
+
+function ecgVerDetalhe(idx) {
+    const r = ecgResultados[idx];
+    if (!r) return;
+    const totalPct = Math.round((r.total / 30) * 100);
+    const status = totalPct >= 75 ? '✅ APROVADO' : '❌ REPROVADO';
+    const corStatus = totalPct >= 75 ? '#16a34a' : '#dc2626';
+    const questoes = Array.from({length:30}, (_, i) => {
+        const q = i + 1;
+        const comps = ECG_GABARITO[q];
+        const nota = r.notas[i];
+        const pct = Math.round(nota * 100);
+        const bg = pct >= 100 ? '#f0fdf4' : pct > 0 ? '#fefce8' : '#fef2f2';
+        const resposta = r.respostas?.['q' + q] || '(em branco)';
+        const compItems = comps.map(c => `<span style="display:inline-block;background:#e0f2fe;color:#0369a1;border-radius:4px;padding:2px 7px;font-size:11px;margin:2px">${c}</span>`).join('');
+        return `<div style="background:${bg};border-radius:8px;padding:12px 14px;margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <strong style="font-size:.875rem">Questão ${q}</strong>
+                <span style="font-weight:700;font-size:.875rem">${pct}%</span>
+            </div>
+            <div style="margin-bottom:4px"><span style="font-size:.75rem;color:var(--muted)">Gabarito:</span> ${compItems}</div>
+            <div style="font-size:.8rem;color:var(--text);background:rgba(0,0,0,.04);border-radius:6px;padding:6px 10px;margin-top:4px"><em>"${resposta}"</em></div>
+        </div>`;
+    }).join('');
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    overlay.innerHTML = `
+        <div style="background:#fff;border-radius:12px;width:100%;max-width:800px;max-height:90vh;display:flex;flex-direction:column">
+            <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                <div>
+                    <div style="font-family:'Montserrat',sans-serif;font-weight:700;font-size:1.1rem">${r.nome}</div>
+                    <span style="font-size:.9rem;font-weight:700;color:${corStatus}">${status} — ${totalPct}%</span>
+                </div>
+                <button onclick="this.closest('[data-ecg-overlay]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)">✕</button>
+            </div>
+            <div style="overflow-y:auto;padding:16px 24px;flex:1">${questoes}</div>
+        </div>`;
+    overlay.dataset.ecgOverlay = '1';
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+}
+
+function ecgExportarExcel() {
+    if (!ecgResultados.length) { toast('Nada para exportar', 'error'); return; }
+    const cabecalho = ['Candidato', ...Array.from({length:30}, (_,i) => `Q${i+1}`), 'Total (%)', 'Status'];
+    const linhas = ecgResultados.map(r => {
+        const totalPct = Math.round((r.total / 30) * 100);
+        return [r.nome, ...r.notas.map(n => Math.round(n * 100) + '%'), totalPct + '%', totalPct >= 75 ? 'Aprovado' : 'Reprovado'];
+    });
+    const ws = XLSX.utils.aoa_to_sheet([cabecalho, ...linhas]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Resultado ECG');
+    XLSX.writeFile(wb, `resultado-ecg-${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast('Excel exportado!');
 }
 
 // ================================================================
