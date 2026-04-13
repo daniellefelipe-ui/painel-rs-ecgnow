@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel RH | ECGNOW</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --navy:       #1d2a57;
+            --navy-dark:  #141d3d;
+            --navy-mid:   #253570;
+            --bronze:     #B8903A;
+            --bronze-dk:  #9A7630;
+            --bg:         #f3f4f8;
+            --white:      #ffffff;
+            --text:       #111827;
+            --muted:      #6b7280;
+            --border:     #e5e7eb;
+            --sidebar-w:  240px;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+        /* ── SIDEBAR ── */
+        #sidebar {
+            width: var(--sidebar-w); background: var(--navy); color: white;
+            display: flex; flex-direction: column;
+            position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+        }
+        .sidebar-logo { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.1); }
+        .sidebar-logo h1 { font-family: 'Montserrat', sans-serif; font-size: 1.25rem; font-weight: 800; }
+        .sidebar-logo span { font-size: .68rem; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .08em; }
+        .sidebar-nav { flex: 1; padding: 10px 0; overflow-y: auto; }
+        .nav-label { font-size: .64rem; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.35); padding: 16px 20px 5px; }
+        .nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 20px; color: rgba(255,255,255,.65); cursor: pointer;
+            font-size: .875rem; border-left: 3px solid transparent; transition: all .15s;
+        }
+        .nav-item:hover { background: rgba(255,255,255,.07); color: white; }
+        .nav-item.active { background: rgba(255,255,255,.11); color: white; border-left-color: var(--bronze); }
+        .nav-item svg { flex-shrink: 0; opacity: .7; }
+        .nav-item.active svg, .nav-item:hover svg { opacity: 1; }
+        .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.1); }
+        .user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .user-avatar { width: 32px; height: 32px; background: var(--bronze); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; flex-shrink: 0; }
+        .u-name { font-size: .8rem; font-weight: 500; }
+        .u-email { font-size: .68rem; color: rgba(255,255,255,.45); }
+        .btn-logout { width: 100%; padding: 8px; background: rgba(255,255,255,.08); border: none; border-radius: 6px; color: rgba(255,255,255,.55); font-size: .8rem; cursor: pointer; transition: all .15s; }
+        .btn-logout:hover { background: rgba(255,255,255,.15); color: white; }
+
+        /* ── MAIN ── */
+        #main-content { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+        .page-header { background: white; border-bottom: 1px solid var(--border); padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+        .page-title { font-family: 'Montserrat', sans-serif; font-size: 1.2rem; font-weight: 700; }
+        .page-subtitle { font-size: .82rem; color: var(--muted); margin-top: 2px; }
+        .page-body { padding: 28px 32px; flex: 1; }
+
+        /* ── BUTTONS ── */
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; border: none; font-size: .875rem; font-weight: 500; cursor: pointer; transition: all .15s; font-family: 'Inter', sans-serif; }
+        .btn-primary { background: var(--navy); color: white; }
+        .btn-primary:hover { background: var(--navy-mid); }
+        .btn-bronze { background: var(--bronze); color: white; }
+        .btn-bronze:hover { background: var(--bronze-dk); }
+        .btn-outline { background: white; color: var(--text); border: 1px solid var(--border); }
+        .btn-outline:hover { border-color: var(--navy); color: var(--navy); }
+        .btn-ghost { background: transparent; color: var(--muted); }
+        .btn-ghost:hover { background: var(--bg); color: var(--text); }
+        .btn-danger { background: #fee2e2; color: #dc2626; }
+        .btn-danger:hover { background: #fecaca; }
+        .btn-success { background: #dcfce7; color: #16a34a; }
+        .btn-success:hover { background: #bbf7d0; }
+        .btn:disabled { opacity: .5; cursor: not-allowed; }
+        .btn-sm { padding: 6px 12px; font-size: .8rem; }
+
+        /* ── STATS ── */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .stat-card { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+        .stat-value { font-size: 1.75rem; font-weight: 800; font-family: 'Montserrat', sans-serif; color: var(--navy); line-height: 1; }
+        .stat-label { font-size: .76rem; color: var(--muted); margin-top: 4px; }
+
+        /* ── BADGE ── */
+        .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+        .bg-green   { background: #dcfce7; color: #16a34a; }
+        .bg-blue    { background: #dbeafe; color: #2563eb; }
+        .bg-amber   { background: #fef3c7; color: #d97706; }
+        .bg-gray    { background: #f3f4f6; color: #6b7280; }
+        .bg-navy    { background: var(--navy); color: white; }
+        .bg-purple  { background: #ede9fe; color: #7c3aed; }
+        .bg-orange  { background: #ffedd5; color: #ea580c; }
+        .bg-cyan    { background: #cffafe; color: #0891b2; }
+        .bg-red     { background: #fee2e2; color: #dc2626; }
+
+        /* ── VAGA CARDS ── */
+        .vagas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+        .vaga-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px; cursor: pointer; transition: all .2s; }
+        .vaga-card:hover { border-color: var(--navy); box-shadow: 0 4px 16px rgba(29,42,87,.12); transform: translateY(-1px); }
+        .vc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .vc-title { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: .95rem; }
+        .vc-setor { font-size: .76rem; color: var(--muted); margin-top: 3px; }
+        .vc-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+        .vc-footer { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .vc-count { font-size: .82rem; color: var(--muted); }
+        .vc-count strong { color: var(--text); }
+        .vc-link { font-size: .78rem; color: var(--navy); font-weight: 600; }
+
+        /* ── TABLE ── */
+        .table-wrap { background: white; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        thead tr { background: #f9fafb; border-bottom: 1px solid var(--border); }
+        th { padding: 12px 16px; text-align: left; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+        td { padding: 14px 16px; font-size: .875rem; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tbody tr { cursor: pointer; transition: background .1s; }
+        tbody tr:hover { background: #f9fafb; }
+        .td-name { font-weight: 600; }
+        .td-sub { font-size: .76rem; color: var(--muted); margin-top: 2px; }
+
+        /* ── BACK BTN ── */
+        .back-btn { display: inline-flex; align-items: center; gap: 6px; font-size: .875rem; color: var(--muted); cursor: pointer; padding: 6px 10px; border-radius: 6px; border: none; background: none; font-family: 'Inter', sans-serif; }
+        .back-btn:hover { background: white; color: var(--text); }
+
+        /* ── MODAL ── */
+        #modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.48); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        #modal-overlay.hidden { display: none; }
+        .modal { background: white; border-radius: 16px; width: 100%; max-width: 780px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.28); }
+        .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; position: sticky; top: 0; background: white; z-index: 1; border-radius: 16px 16px 0 0; }
+        .modal-close { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; background: #f3f4f6; border-radius: 6px; cursor: pointer; color: var(--muted); flex-shrink: 0; font-size: .9rem; }
+        .modal-close:hover { background: #e5e7eb; color: var(--text); }
+        .modal-body { padding: 24px; }
+        .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 24px; background: #f9fafb; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px; }
+
+        /* ── ANÁLISE ── */
+        .classif-card { padding: 16px; border-radius: 10px; border: 1px solid; margin-bottom: 20px; }
+        .classif-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 3px; }
+        .classif-titulo { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 1.05rem; }
+        .classif-just { font-size: .85rem; margin-top: 8px; line-height: 1.55; }
+        .classif-altamente  { background: #dcfce7; border-color: #bbf7d0; }
+        .classif-compativel { background: #dbeafe; border-color: #bfdbfe; }
+        .classif-potencial  { background: #fef3c7; border-color: #fde68a; }
+        .classif-pouco      { background: #f3f4f6; border-color: var(--border); }
+
+        .sec-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 20px 0 8px; }
+        .resumo-box { font-size: .875rem; line-height: 1.7; background: #f9fafb; padding: 14px; border-radius: 8px; }
+        .item-row { display: flex; align-items: flex-start; gap: 8px; font-size: .85rem; line-height: 1.55; margin-bottom: 6px; }
+        .item-icon { flex-shrink: 0; margin-top: 1px; }
+
+        /* ── ETAPAS PIPELINE ── */
+        .pipeline { display: flex; gap: 5px; flex-wrap: wrap; margin: 12px 0 16px; }
+        .etapa-pill { padding: 5px 11px; border-radius: 20px; font-size: .72rem; font-weight: 600; background: #f3f4f6; color: var(--muted); }
+        .etapa-pill.done { background: #dbeafe; color: #2563eb; }
+        .etapa-pill.current { background: var(--navy); color: white; }
+        .etapa-pill.reprovado { background: #f3f4f6; color: var(--muted); }
+
+        /* ── KANBAN ── */
+        .kanban-wrap { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 20px; align-items: flex-start; }
+        .kanban-col { flex: 0 0 200px; border-radius: 10px; overflow: hidden; background: #f3f4f6; }
+        .kanban-col-header { padding: 10px 12px; font-family: 'Montserrat', sans-serif; font-size: .72rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between; }
+        .kanban-col-count { background: rgba(255,255,255,.6); border-radius: 20px; padding: 1px 7px; font-size: .7rem; }
+        .kanban-cards { padding: 6px; display: flex; flex-direction: column; gap: 6px; min-height: 60px; }
+        .kanban-card { background: white; border-radius: 7px; padding: 10px 11px; cursor: pointer; border: 1px solid var(--border); transition: box-shadow .15s; }
+        .kanban-card:hover { box-shadow: 0 3px 10px rgba(0,0,0,.08); }
+        .kanban-card-name { font-weight: 600; font-size: .82rem; margin-bottom: 3px; }
+        .kanban-card-sub { font-size: .72rem; color: var(--muted); }
+        .kcol-triagem .kanban-col-header { background: #e5e7eb; color: #374151; }
+        .kcol-analise_rh .kanban-col-header { background: #dbeafe; color: #1d4ed8; }
+        .kcol-entrevista_rh .kanban-col-header { background: #ede9fe; color: #6d28d9; }
+        .kcol-teste_pratico .kanban-col-header { background: #ffedd5; color: #c2410c; }
+        .kcol-entrevista_gestor .kanban-col-header { background: #cffafe; color: #0e7490; }
+        .kcol-aprovado .kanban-col-header { background: #dcfce7; color: #15803d; }
+        .kcol-reprovado .kanban-col-header { background: #f3f4f6; color: var(--muted); }
+
+        /* ── VIEW TOGGLE ── */
+        .view-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .vtbtn { padding: 7px 13px; border: none; background: white; cursor: pointer; font-size: .8rem; color: var(--muted); font-family: 'Inter', sans-serif; transition: all .15s; }
+        .vtbtn.active { background: var(--navy); color: white; font-weight: 600; }
+        .vtbtn:not(:last-child) { border-right: 1px solid var(--border); }
+
+        /* ── AVALIAÇÃO DE COMPETÊNCIAS ── */
+        .avaliacao-bloco { background: #f9fafb; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+        .avaliacao-bloco-title { font-family: 'Montserrat', sans-serif; font-size: .75rem; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
+        .comp-grupo { margin-bottom: 14px; }
+        .comp-grupo-titulo { font-size: .75rem; font-weight: 700; color: var(--muted); margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .comp-media { background: var(--navy); color: white; border-radius: 20px; padding: 1px 9px; font-size: .72rem; font-weight: 700; }
+        .comp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+        .comp-nome { font-size: .82rem; flex: 1; }
+        .comp-scores { display: flex; gap: 3px; }
+        .csb { width: 26px; height: 26px; border: 1.5px solid var(--border); border-radius: 5px; background: white; font-size: .75rem; font-weight: 700; cursor: pointer; color: var(--muted); transition: all .12s; }
+        .csb:hover { border-color: var(--navy); color: var(--navy); }
+        .csb.s1 { background: #fee2e2; border-color: #dc2626; color: #dc2626; }
+        .csb.s2 { background: #fed7aa; border-color: #ea580c; color: #ea580c; }
+        .csb.s3 { background: #fef9c3; border-color: #ca8a04; color: #ca8a04; }
+        .csb.s4 { background: #bbf7d0; border-color: #16a34a; color: #16a34a; }
+        .csb.s5 { background: #86efac; border-color: #15803d; color: #15803d; }
+
+        /* ── RANKING ── */
+        .rank-medal { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1.05rem; }
+        .rank-1 .rank-medal { color: #d97706; }
+        .rank-2 .rank-medal { color: #9ca3af; }
+        .rank-3 .rank-medal { color: #92400e; }
+        .score-na { color: var(--muted); font-size: .78rem; }
+        .score-val { font-weight: 600; font-size: .9rem; }
+        .score-total { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 1.05rem; color: var(--navy); }
+
+        /* ── NOTAS ── */
+        .nota-card { background: #fefce8; border: 1px solid #fef08a; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+        .nota-text { font-size: .85rem; line-height: 1.5; }
+        .nota-date { font-size: .7rem; color: var(--muted); margin-top: 5px; }
+
+        /* ── FORMS ── */
+        label { font-size: .78rem; font-weight: 600; color: var(--muted); display: block; margin-bottom: 5px; }
+        input, textarea, select {
+            width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: .875rem; font-family: 'Inter', sans-serif; color: var(--text);
+            background: white; outline: none; transition: border-color .15s;
+        }
+        input:focus, textarea:focus, select:focus { border-color: var(--navy); }
+        textarea { resize: vertical; min-height: 80px; }
+        .form-group { margin-bottom: 14px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+        /* ── SETUP BANNER ── */
+        .setup-banner { background: #fef3c7; border: 1px solid #fde68a; border-radius: 10px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .setup-banner p { font-size: .875rem; flex: 1; }
+
+        /* ── LOGIN ── */
+        #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy-mid) 100%); }
+        .login-box { background: white; border-radius: 16px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.32); }
+        .login-logo { text-align: center; margin-bottom: 28px; }
+        .login-logo h1 { font-family: 'Montserrat', sans-serif; font-size: 1.9rem; font-weight: 800; color: var(--navy); }
+        .login-logo p { font-size: .8rem; color: var(--muted); margin-top: 4px; }
+        .login-btn { width: 100%; padding: 12px; background: var(--navy); color: white; border: none; border-radius: 8px; font-size: .95rem; font-weight: 600; cursor: pointer; margin-top: 4px; font-family: 'Inter', sans-serif; transition: background .15s; }
+        .login-btn:hover { background: var(--navy-mid); }
+        .login-btn:disabled { opacity: .6; cursor: not-allowed; }
+        .login-error { background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; font-size: .85rem; color: #dc2626; margin-top: 10px; }
+
+        /* ── MISC ── */
+        .loading { display: flex; align-items: center; justify-content: center; padding: 60px; color: var(--muted); gap: 10px; font-size: .9rem; }
+        .empty { text-align: center; padding: 60px 20px; }
+        .empty h3 { font-family: 'Montserrat', sans-serif; font-size: 1rem; margin-bottom: 8px; }
+        .empty p { font-size: .875rem; color: var(--muted); }
+        #toast { position: fixed; bottom: 24px; right: 24px; background: var(--navy); color: white; padding: 12px 20px; border-radius: 8px; font-size: .875rem; box-shadow: 0 4px 12px rgba(0,0,0,.2); z-index: 2000; }
+        #toast.success { background: #16a34a; }
+        #toast.error   { background: #dc2626; }
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+
+        /* ── VISÃO GERAL ── */
+        .kcol-visao_geral .kanban-col-header { background: #fef9c3; color: #854d0e; }
+        .vg-bloco { background: #f9fafb; border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+        .vg-titulo { font-family: 'Montserrat', sans-serif; font-size: .75rem; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
+        .vg-legenda { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+        .vg-legenda-item { display: flex; align-items: center; gap: 5px; font-size: .72rem; color: var(--muted); }
+        .vg-legenda-cor { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+        .sl-grupo { margin-bottom: 16px; }
+        .sl-grupo-titulo { font-size: .73rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+        .sl-comp { margin-bottom: 10px; }
+        .sl-comp-nome { font-size: .8rem; margin-bottom: 4px; font-weight: 500; }
+        .sl-bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+        .sl-bar-lbl { font-size: .67rem; color: var(--muted); width: 52px; flex-shrink: 0; text-align: right; }
+        .sl-bar-track { flex: 1; height: 10px; background: #e5e7eb; border-radius: 6px; overflow: hidden; }
+        .sl-bar-fill { height: 100%; border-radius: 6px; transition: width .4s ease; }
+        .sl-bar-val { font-size: .72rem; font-weight: 700; width: 26px; flex-shrink: 0; }
+        .vg-media-total { display: flex; align-items: center; justify-content: space-between; background: var(--navy); color: white; border-radius: 8px; padding: 10px 14px; margin-top: 8px; }
+        .vg-media-total-lbl { font-size: .8rem; font-weight: 600; }
+        .vg-media-total-val { font-family: 'Montserrat', sans-serif; font-size: 1.15rem; font-weight: 800; }
+        #relatorio-final-area { margin-top: 12px; }
+        #relatorio-final-area h3 { font-size: .82rem; font-weight: 700; color: var(--navy); margin: 10px 0 4px; }
+        #relatorio-final-area p { font-size: .82rem; line-height: 1.6; margin-bottom: 8px; }
+        #relatorio-final-area ul { padding-left: 16px; margin-bottom: 8px; }
+        #relatorio-final-area li { font-size: .82rem; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="login-screen">
+    <div class="login-box">
+        <div class="login-logo">
+            <h1>ECGNOW</h1>
+            <p>Painel de Recrutamento &amp; Seleção</p>
+        </div>
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="login-email" required placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="login-password" required placeholder="••••••••">
+            </div>
+            <button class="login-btn" type="submit" id="login-btn">Entrar</button>
+            <div id="login-error" class="login-error hidden"></div>
+        </form>
+    </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app" class="hidden">
+    <aside id="sidebar">
+        <div class="sidebar-logo">
+            <h1>ECGNOW</h1>
+            <span>Painel RH</span>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-label">Principal</div>
+            <div class="nav-item active" id="nav-vagas" onclick="navigate('vagas')">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                Vagas
+            </div>
+            <div class="nav-item" id="nav-banco" onclick="navigate('banco')">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Banco de Talentos
+            </div>
+            <div class="nav-label">Configurações</div>
+            <div class="nav-item" onclick="openSetupModal()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M12 2v2m0 16v2m10-10h-2M4 12H2m15.66-5.66-1.42 1.42M7.76 16.24l-1.42 1.42m11.32 0-1.42-1.42M7.76 7.76 6.34 6.34"/></svg>
+                API Claude
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">RH</div>
+                <div>
+                    <div class="u-name" id="user-name">—</div>
+                    <div class="u-email" id="user-email-display">—</div>
+                </div>
+            </div>
+            <button class="btn-logout" onclick="handleLogout()">Sair</button>
+        </div>
+    </aside>
+
+    <main id="main-content">
+        <div id="page-content"></div>
+    </main>
+</div>
+
+<!-- ── MODAL ── -->
+<div id="modal-overlay" class="hidden" onclick="handleOverlayClick(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <div id="modal-content"></div>
+    </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast" class="hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ================================================================
+// CONFIG
+// ================================================================
+const SUPABASE_URL = 'https://mswlkjbswcufjkzeeqan.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_2twX0swUquIvdWVc2-JMQQ_kjLEMwVb';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ================================================================
+// STATE
+// ================================================================
+const S = { user: null, view: 'vagas', vaga: null, cargosFirebase: [], vagaCargo: null };
+
+// ================================================================
+// FIREBASE — leitura de cargos via REST API (sem autenticação)
+// ================================================================
+const FB_PROJECT = 'rh-ecgnow';
+const FB_KEY     = 'AIzaSyBopJe43OvWuA-vuHWGCTqQ_ApreNf_kWA';
+const FB_BASE    = `https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents`;
+
+function _fsVal(val) {
+    if (!val) return null;
+    if (val.stringValue  !== undefined) return val.stringValue;
+    if (val.integerValue !== undefined) return parseInt(val.integerValue);
+    if (val.doubleValue  !== undefined) return parseFloat(val.doubleValue);
+    if (val.booleanValue !== undefined) return val.booleanValue;
+    if (val.nullValue    !== undefined) return null;
+    if (val.arrayValue)  return (val.arrayValue.values  || []).map(_fsVal);
+    if (val.mapValue) {
+        const o = {};
+        for (const [k, v] of Object.entries(val.mapValue.fields || {})) o[k] = _fsVal(v);
+        return o;
+    }
+    return null;
+}
+function _fsDoc(doc) {
+    const o = { id: doc.name.split('/').pop() };
+    for (const [k, v] of Object.entries(doc.fields || {})) o[k] = _fsVal(v);
+    return o;
+}
+
+async function carregarCargosFirebase() {
+    try {
+        const resp = await fetch(`${FB_BASE}/cargos?key=${FB_KEY}`);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        S.cargosFirebase = (data.documents || []).map(_fsDoc)
+            .sort((a, b) => (a.titulo || '').localeCompare(b.titulo || ''));
+        return S.cargosFirebase;
+    } catch (e) { console.warn('Cargos Firebase:', e.message); return []; }
+}
+
+async function buscarCargoFirebase(cargoId) {
+    if (!cargoId) return null;
+    const cached = S.cargosFirebase.find(c => c.id === cargoId);
+    if (cached) return cached;
+    try {
+        const resp = await fetch(`${FB_BASE}/cargos/${cargoId}?key=${FB_KEY}`);
+        if (!resp.ok) return null;
+        return _fsDoc(await resp.json());
+    } catch (e) { return null; }
+}
+
+function formatarCargoParaPrompt(cargo) {
+    if (!cargo) return '';
+    const linhas = [];
+    if (cargo.missao) linhas.push(`Missão do cargo: ${cargo.missao}`);
+
+    const tecnicas = (cargo.comp_tecnicas || []);
+    if (tecnicas.length) {
+        linhas.push('\nCompetências Técnicas (grau 1–5):');
+        tecnicas.forEach(c => linhas.push(`- ${c.nome} [grau ${c.grau || '?'}]${c.descricao ? ': ' + c.descricao : ''}`));
+    }
+    const comportamentais = (cargo.comp_comportamentais || []);
+    if (comportamentais.length) {
+        linhas.push('\nCompetências Comportamentais (grau 1–5):');
+        comportamentais.forEach(c => linhas.push(`- ${c.nome} [grau ${c.grau || '?'}]`));
+    }
+    const organizacionais = (cargo.comp_organizacionais || []);
+    if (organizacionais.length) {
+        linhas.push('\nCompetências Organizacionais (grau 1–5):');
+        organizacionais.forEach(c => linhas.push(`- ${c.nome} [grau ${c.grau || '?'}]${c.descricao ? ': ' + c.descricao : ''}`));
+    }
+    const conhecimentos = (cargo.req_conhecimentos || []).filter(Boolean);
+    if (conhecimentos.length) linhas.push(`\nConhecimentos necessários: ${conhecimentos.join('; ')}`);
+    const habilidades = (cargo.req_habilidades || []).filter(Boolean);
+    if (habilidades.length) linhas.push(`Habilidades necessárias: ${habilidades.join('; ')}`);
+
+    return linhas.join('\n');
+}
+
+// ================================================================
+// INIT
+// ================================================================
+(async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session?.user) { S.user = session.user; showApp(); }
+    else showLogin();
+})();
+
+sb.auth.onAuthStateChange((ev, session) => {
+    if (ev === 'SIGNED_IN' && session) { S.user = session.user; showApp(); }
+    else if (ev === 'SIGNED_OUT') showLogin();
+});
+
+// ================================================================
+// AUTH
+// ================================================================
+function showLogin() {
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+}
+
+function showApp() {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    const email = S.user.email;
+    const name  = email.split('@')[0];
+    document.getElementById('user-name').textContent = name[0].toUpperCase() + name.slice(1);
+    document.getElementById('user-email-display').textContent = email;
+    document.getElementById('user-avatar').textContent = name[0].toUpperCase();
+    navigate('vagas');
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    const errDiv = document.getElementById('login-error');
+    btn.disabled = true; btn.textContent = 'Entrando...';
+    errDiv.classList.add('hidden');
+    const { error } = await sb.auth.signInWithPassword({
+        email: document.getElementById('login-email').value,
+        password: document.getElementById('login-password').value,
+    });
+    if (error) {
+        errDiv.textContent = 'E-mail ou senha inválidos.';
+        errDiv.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Entrar';
+    }
+}
+
+async function handleLogout() { await sb.auth.signOut(); }
+
+// ================================================================
+// NAVIGATION
+// ================================================================
+function navigate(view, extra = {}) {
+    S.view = view;
+    if (extra.vaga !== undefined) S.vaga = extra.vaga;
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const navKey = view === 'candidatos' ? 'vagas' : view;
+    document.getElementById('nav-' + navKey)?.classList.add('active');
+    render();
+}
+
+function render() {
+    if (S.view === 'vagas')      renderVagas();
+    else if (S.view === 'candidatos') renderCandidatos();
+    else if (S.view === 'banco') renderBanco();
+}
+
+// ================================================================
+// VIEW: VAGAS
+// ================================================================
+async function renderVagas() {
+    const pc = document.getElementById('page-content');
+    pc.innerHTML = `
+        <div class="page-header">
+            <div>
+                <div class="page-title">Vagas</div>
+                <div class="page-subtitle">Posições abertas e candidatos em processo</div>
+            </div>
+            <button class="btn btn-bronze" onclick="openNovaVagaModal()">+ Nova vaga</button>
+        </div>
+        <div class="page-body">
+            ${!getClaudeKey() ? `<div class="setup-banner">
+                <svg width="18" height="18" fill="none" stroke="#d97706" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <p><strong>Chave da API Claude não configurada.</strong> Configure para habilitar análise automática de currículos.</p>
+                <button class="btn btn-outline btn-sm" onclick="openSetupModal()">Configurar agora</button>
+            </div>` : ''}
+            <div id="v-stats" class="stats-row"></div>
+            <div id="v-grid" class="vagas-grid"><div class="loading">Carregando vagas...</div></div>
+        </div>`;
+
+    const { data: vagas } = await sb.from('vagas').select('*').order('created_at', { ascending: false });
+    const vagaIds = (vagas || []).map(v => v.id);
+    const { data: counts } = vagaIds.length
+        ? await sb.from('candidaturas').select('vaga_id').in('vaga_id', vagaIds)
+        : { data: [] };
+
+    const cMap = {};
+    (counts || []).forEach(c => { cMap[c.vaga_id] = (cMap[c.vaga_id] || 0) + 1; });
+
+    const total = (vagas || []).length;
+    const totalC = Object.values(cMap).reduce((a, b) => a + b, 0);
+
+    document.getElementById('v-stats').innerHTML = `
+        <div class="stat-card"><div class="stat-value">${total}</div><div class="stat-label">Vagas</div></div>
+        <div class="stat-card"><div class="stat-value">${totalC}</div><div class="stat-label">Candidatos em processo</div></div>`;
+
+    if (!vagas || !vagas.length) {
+        document.getElementById('v-grid').innerHTML = `<div class="empty" style="grid-column:1/-1"><h3>Nenhuma vaga cadastrada</h3><p>As vagas publicadas no site de carreiras aparecerão aqui.</p></div>`;
+        return;
+    }
+
+    document.getElementById('v-grid').innerHTML = vagas.map(v => {
+        const n = cMap[v.id] || 0;
+        const modCls = v.modalidade === 'Remoto' ? 'bg-green' : v.modalidade === 'Híbrido' ? 'bg-blue' : 'bg-navy';
+        const vagaJson = JSON.stringify(v).replace(/"/g, '&quot;');
+        return `
+        <div class="vaga-card" onclick="navigate('candidatos', { vaga: ${vagaJson} })">
+            <div class="vc-head">
+                <div>
+                    <div class="vc-title">${v.titulo || 'Sem título'}</div>
+                    <div class="vc-setor">${v.setor || ''}</div>
+                </div>
+                <span class="badge ${v.ativa !== false ? 'bg-green' : 'bg-gray'}">${v.ativa !== false ? 'Aberta' : 'Encerrada'}</span>
+            </div>
+            <div class="vc-meta">
+                ${v.modalidade ? `<span class="badge ${modCls}">${v.modalidade}</span>` : ''}
+                ${v.localizacao ? `<span class="badge bg-gray">${v.localizacao}</span>` : ''}
+            </div>
+            <div class="vc-footer">
+                <div class="vc-count"><strong>${n}</strong> candidato${n !== 1 ? 's' : ''}</div>
+                <span class="vc-link">Ver candidatos →</span>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ================================================================
+// VIEW: CANDIDATOS
+// ================================================================
+async function renderCandidatos() {
+    const v = S.vaga;
+    if (!v) { navigate('vagas'); return; }
+
+    document.getElementById('page-content').innerHTML = `
+        <div class="page-header">
+            <div style="display:flex;align-items:center;gap:10px">
+                <button class="back-btn" onclick="navigate('vagas')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                    Vagas
+                </button>
+                <div>
+                    <div class="page-title">${v.titulo || 'Vaga'}</div>
+                    <div class="page-subtitle">${[v.setor, v.modalidade, v.localizacao].filter(Boolean).join(' · ')}</div>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+                <div class="view-toggle">
+                    <button class="vtbtn active" id="cv-btn-lista" onclick="setCandView('lista')">Lista</button>
+                    <button class="vtbtn" id="cv-btn-kanban" onclick="setCandView('kanban')">Kanban</button>
+                    <button class="vtbtn" id="cv-btn-ranking" onclick="setCandView('ranking')">Ranking</button>
+                </div>
+                <button class="btn btn-bronze" onclick="openAddModal()">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Adicionar candidato
+                </button>
+            </div>
+        </div>
+        <div class="page-body">
+            <div id="c-content"><div class="loading">Carregando...</div></div>
+        </div>`;
+
+    await loadCandidatos(v.id);
+}
+
+async function loadCandidatos(vagaId) {
+    const { data: rows, error } = await sb
+        .from('candidaturas')
+        .select('*, analises_cv(*)')
+        .eq('vaga_id', vagaId)
+        .order('created_at', { ascending: false });
+
+    const el = document.getElementById('c-content');
+    if (error) { el.innerHTML = `<div class="empty"><h3>Erro</h3><p>${error.message}</p></div>`; return; }
+
+    if (!rows || !rows.length) {
+        el.innerHTML = `<div class="empty"><h3>Nenhum candidato ainda</h3><p>Adicione candidatos ou aguarde candidaturas pelo site.</p></div>`;
+        return;
+    }
+
+    const etapaCounts = {};
+    rows.forEach(r => { etapaCounts[r.etapa] = (etapaCounts[r.etapa] || 0) + 1; });
+    const LABELS = { triagem:'Triagem', analise_rh:'Análise RH', entrevista_rh:'Entrevista RH', teste_pratico:'Teste Prático', entrevista_gestor:'C/ Gestor', visao_geral:'Visão Geral', aprovado:'Aprovados', reprovado:'Não avançou' };
+    const statsHtml = Object.entries(etapaCounts).map(([k, n]) =>
+        `<div class="stat-card"><div class="stat-value">${n}</div><div class="stat-label">${LABELS[k] || k}</div></div>`
+    ).join('');
+
+    const statsEl = `<div class="stats-row">${statsHtml}</div>`;
+
+    if (S.subView === 'kanban') {
+        const KCOLS = [
+            { k:'triagem', l:'Triagem' }, { k:'analise_rh', l:'Análise RH' },
+            { k:'entrevista_rh', l:'Entrevista RH' }, { k:'teste_pratico', l:'Teste Prático' },
+            { k:'entrevista_gestor', l:'C/ Gestor' }, { k:'visao_geral', l:'Visão Geral' },
+            { k:'aprovado', l:'Aprovados ✓' }, { k:'reprovado', l:'Não avançou' }
+        ];
+        const colsHtml = KCOLS.map(({ k, l }) => {
+            const cards = rows.filter(r => r.etapa === k).map(r => {
+                const a = r.analises_cv;
+                return `<div class="kanban-card" onclick="openCandidatoModal('${r.id}')">
+                    <div class="kanban-card-name">${r.nome}</div>
+                    <div class="kanban-card-sub">${r.localizacao || r.email || ''}</div>
+                    ${a?.classificacao ? `<div style="margin-top:5px">${classifBadge(a.classificacao)}</div>` : ''}
+                </div>`;
+            }).join('') || '<div style="color:var(--muted);font-size:.75rem;padding:6px 4px;text-align:center">—</div>';
+            const count = rows.filter(r => r.etapa === k).length;
+            return `<div class="kanban-col kcol-${k}">
+                <div class="kanban-col-header">${l}<span class="kanban-col-count">${count}</span></div>
+                <div class="kanban-cards">${cards}</div>
+            </div>`;
+        }).join('');
+        el.innerHTML = statsEl + `<div class="kanban-wrap">${colsHtml}</div>`;
+    } else {
+        el.innerHTML = statsEl + `
+        <div class="table-wrap">
+            <table>
+                <thead><tr>
+                    <th>Candidato</th><th>Classificação</th><th>Etapa</th><th>Adicionado</th><th></th>
+                </tr></thead>
+                <tbody>${rows.map(r => {
+                    const a = r.analises_cv;
+                    return `<tr onclick="openCandidatoModal('${r.id}')">
+                        <td>
+                            <div class="td-name">${r.nome}</div>
+                            <div class="td-sub">${[r.email, r.localizacao].filter(Boolean).join(' · ')}</div>
+                        </td>
+                        <td>${a?.classificacao ? classifBadge(a.classificacao) : `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();startAnalysis('${r.id}')">Analisar CV</button>`}</td>
+                        <td>${etapaBadge(r.etapa)}</td>
+                        <td style="color:var(--muted);font-size:.78rem">${fmtDate(r.created_at)}</td>
+                        <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openCandidatoModal('${r.id}')">Ver →</button></td>
+                    </tr>`;
+                }).join('')}</tbody>
+            </table>
+        </div>`;
+    }
+}
+
+// ================================================================
+// VIEW: BANCO DE TALENTOS
+// ================================================================
+async function renderBanco() {
+    document.getElementById('page-content').innerHTML = `
+        <div class="page-header">
+            <div>
+                <div class="page-title">Banco de Talentos</div>
+                <div class="page-subtitle">Candidatos inscritos pelo site de carreiras</div>
+            </div>
+        </div>
+        <div class="page-body">
+            <div class="table-wrap">
+                <div class="loading" id="banco-loading">Carregando...</div>
+                <table id="banco-table" class="hidden">
+                    <thead><tr><th>Nome</th><th>Área</th><th>Contato</th><th>DISC</th><th>Data</th><th>Ações</th></tr></thead>
+                    <tbody id="banco-tbody"></tbody>
+                </table>
+            </div>
+        </div>`;
+
+    const { data } = await sb.from('banco_talentos').select('*').order('created_at', { ascending: false });
+    document.getElementById('banco-loading').classList.add('hidden');
+    document.getElementById('banco-table').classList.remove('hidden');
+
+    if (!data?.length) {
+        document.getElementById('banco-tbody').innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">Nenhum cadastro encontrado.</td></tr>`;
+        return;
+    }
+
+    document.getElementById('banco-tbody').innerHTML = data.map(c => {
+        const temDisc = c.disc_perfil;
+        const discBadge = temDisc
+            ? `<span class="badge bg-green" style="font-size:.72rem">${c.disc_perfil}</span>`
+            : '<span style="color:var(--muted);font-size:.78rem">—</span>';
+        return `<tr>
+            <td>
+                <div class="td-name">${c.nome}</div>
+                <div class="td-sub">${c.linkedin ? `<a href="${c.linkedin}" target="_blank" style="color:#2563eb">LinkedIn</a>` : ''}</div>
+            </td>
+            <td><span class="badge bg-blue">${c.area_interesse || '—'}</span></td>
+            <td style="font-size:.82rem">${c.email || ''}<br>${c.telefone || ''}</td>
+            <td>${discBadge}</td>
+            <td style="color:var(--muted);font-size:.78rem">${fmtDate(c.created_at)}</td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap">
+                ${c.curriculo_url ? `<a href="${c.curriculo_url}" target="_blank" class="btn btn-outline btn-sm">Ver CV</a>` : ''}
+                ${temDisc ? `<button class="btn btn-outline btn-sm" onclick="gerarRelatorioDisc('${c.id}')">📊 Relatório DISC</button>` : ''}
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ================================================================
+// MODAL: CANDIDATO
+// ================================================================
+async function openCandidatoModal(id) {
+    showModal('<div class="loading">Carregando...</div>');
+    const { data: c } = await sb
+        .from('candidaturas')
+        .select('*, analises_cv(*), notas_candidatura(*), historico_etapas(*), avaliacoes(*), vaga:vagas(*)')
+        .eq('id', id).single();
+    if (!c) { showModal('<div class="modal-body"><p>Erro ao carregar.</p></div>'); return; }
+
+    // Busca cargo no Firebase para usar competências reais na avaliação
+    const cargoModal = c.vaga?.cargo_id ? await buscarCargoFirebase(c.vaga.cargo_id) : null;
+
+    // Guarda dados para uso no relatório final
+    window._candidatoAtual = { c, cargo: cargoModal };
+
+    const ETAPAS = [
+        { k:'triagem',            l:'Triagem' },
+        { k:'analise_rh',         l:'Análise RH' },
+        { k:'entrevista_rh',      l:'Entrevista RH' },
+        { k:'teste_pratico',      l:'Teste Prático' },
+        { k:'entrevista_gestor',  l:'C/ Gestor' },
+        { k:'visao_geral',        l:'Visão Geral' },
+        { k:'aprovado',           l:'Aprovado ✓' },
+    ];
+    const idx = ETAPAS.findIndex(e => e.k === c.etapa);
+    const next = idx >= 0 && idx < ETAPAS.length - 1 ? ETAPAS[idx + 1] : null;
+    const isEnd = c.etapa === 'aprovado' || c.etapa === 'reprovado';
+
+    const pipeline = ETAPAS.map((e, i) => {
+        const cls = e.k === c.etapa ? 'current' : i < idx ? 'done' : '';
+        return `<div class="etapa-pill ${cls}">${i < idx ? '✓ ' : ''}${e.l}</div>`;
+    }).join('') + (c.etapa === 'reprovado' ? '<div class="etapa-pill reprovado">Não avançou</div>' : '');
+
+    const notas = (c.notas_candidatura || []).sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em));
+    const analise = c.analises_cv;
+
+    document.getElementById('modal-content').innerHTML = `
+        <div class="modal-header">
+            <div>
+                <div style="font-family:'Montserrat',sans-serif;font-weight:700;font-size:1.05rem">${c.nome}</div>
+                <div style="font-size:.8rem;color:var(--muted);margin-top:3px">${[c.email, c.telefone, c.localizacao].filter(Boolean).join(' · ')}</div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="pipeline">${pipeline}</div>
+
+            ${(c.curriculo_url || c.linkedin) ? `<div style="display:flex;gap:8px;margin-bottom:16px">
+                ${c.curriculo_url ? `<a href="${c.curriculo_url}" target="_blank" class="btn btn-outline btn-sm">📄 Ver currículo</a>` : ''}
+                ${c.linkedin ? `<a href="${c.linkedin}" target="_blank" class="btn btn-outline btn-sm">🔗 LinkedIn</a>` : ''}
+            </div>` : ''}
+
+            ${c.disc_perfil ? `
+            <div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                    <div>
+                        <span class="sec-label" style="margin:0">Perfil Comportamental DISC</span>
+                        <span style="margin-left:8px;font-weight:700;color:var(--navy)">${c.disc_perfil}</span>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="gerarRelatorioDiscCandidatura('${id}')">📊 Relatório</button>
+                </div>
+                <div style="display:flex;gap:8px">
+                    ${[['E','Executor',c.disc_e,'#e74c3c'],['C','Comunicador',c.disc_c,'#f39c12'],['P','Planejador',c.disc_p,'#27ae60'],['A','Analista',c.disc_a,'#2980b9']].map(([k,l,v,cor]) => {
+                        const total = (c.disc_e||0)+(c.disc_c||0)+(c.disc_p||0)+(c.disc_a||0);
+                        const pct = total ? Math.round((v/total)*100) : 0;
+                        return `<div style="flex:1;text-align:center">
+                            <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px">${l}</div>
+                            <div style="height:6px;background:#e5e7eb;border-radius:3px;margin-bottom:4px">
+                                <div style="height:100%;width:${pct}%;background:${cor};border-radius:3px"></div>
+                            </div>
+                            <div style="font-size:.78rem;font-weight:700;color:${cor}">${pct}%</div>
+                        </div>`;
+                    }).join('')}
+                </div>
+                <div id="disc-relatorio-${id}"></div>
+            </div>` : ''}
+
+            <div id="analise-area-${id}">
+                ${analise ? renderAnalise(analise) : `
+                <div style="text-align:center;padding:24px;background:#f9fafb;border-radius:10px;border:1px dashed var(--border)">
+                    <p style="color:var(--muted);margin-bottom:12px">Currículo ainda não analisado</p>
+                    <button class="btn btn-bronze" onclick="startAnalysis('${id}')">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        Analisar com Claude
+                    </button>
+                </div>`}
+            </div>
+
+            ${['entrevista_rh','teste_pratico','entrevista_gestor'].includes(c.etapa) ? `
+            <hr>
+            <div class="sec-label">${c.etapa === 'entrevista_rh' ? 'Avaliação — Entrevista RH' : c.etapa === 'teste_pratico' ? 'Avaliação — Teste Prático' : 'Avaliação — Gestor'}</div>
+            ${renderAvaliacaoForm(id, c.etapa === 'entrevista_gestor' ? 'gestor' : c.etapa, (c.avaliacoes||[]).find(a => a.tipo === (c.etapa === 'entrevista_gestor' ? 'gestor' : c.etapa)), cargoModal)}
+            ` : ''}
+
+            ${['visao_geral','aprovado','reprovado'].includes(c.etapa) ? `
+            <hr>
+            <div class="sec-label">Visão Geral — Relatório Final</div>
+            ${renderVisaoGeral(id, c.avaliacoes || [], cargoModal)}
+            ` : ''}
+            <hr>
+            <div class="sec-label">Notas internas</div>
+            <div id="notas-${id}">
+                ${notas.length ? notas.map(n => `
+                    <div class="nota-card">
+                        <div class="nota-text">${n.conteudo}</div>
+                        <div class="nota-date">${fmtDateTime(n.criado_em)}</div>
+                    </div>`).join('') : '<p style="color:var(--muted);font-size:.85rem;margin-bottom:10px">Nenhuma nota ainda.</p>'}
+            </div>
+            <div class="form-group">
+                <textarea id="nota-input-${id}" rows="2" placeholder="Adicionar nota..."></textarea>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="salvarNota('${id}')">Salvar nota</button>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline btn-sm" onclick="startAnalysis('${id}')">
+                ${analise ? '🔄 Re-analisar' : '🔍 Analisar CV'}
+            </button>
+            ${!isEnd && next ? `<button class="btn btn-primary" onclick="moverEtapa('${id}','${next.k}','${next.l}')">Avançar → ${next.l}</button>` : ''}
+            ${!isEnd ? `<button class="btn btn-danger" onclick="moverEtapa('${id}','reprovado','Não avançou')">Não avançar</button>` : ''}
+            ${c.etapa === 'reprovado' ? `<button class="btn btn-outline" onclick="moverEtapa('${id}','triagem','Triagem')">↩ Retornar à triagem</button>` : ''}
+        </div>`;
+}
+
+function renderAnalise(a) {
+    const cfgMap = {
+        'Altamente compatível': { cls:'altamente', color:'#16a34a' },
+        'Compatível':           { cls:'compativel', color:'#2563eb' },
+        'Potencial':            { cls:'potencial',  color:'#d97706' },
+        'Pouco compatível':     { cls:'pouco',      color:'#6b7280' },
+    };
+    const cfg = cfgMap[a.classificacao] || cfgMap['Pouco compatível'];
+    const pos = Array.isArray(a.pontos_positivos)   ? a.pontos_positivos   : [];
+    const alt = Array.isArray(a.alertas)             ? a.alertas             : [];
+    const prg = Array.isArray(a.perguntas_entrevista)? a.perguntas_entrevista: [];
+
+    return `
+        <div class="classif-card classif-${cfg.cls}">
+            <div class="classif-label" style="color:${cfg.color}">Classificação do Agente</div>
+            <div class="classif-titulo">${a.classificacao}</div>
+            <div class="classif-just" style="color:${cfg.color}">${a.justificativa_classificacao || ''}</div>
+        </div>
+        ${a.resumo_profissional ? `<div class="sec-label">Resumo profissional</div><div class="resumo-box">${a.resumo_profissional}</div>` : ''}
+        ${pos.length ? `<div class="sec-label">Pontos positivos</div>${pos.map(p=>`<div class="item-row"><span class="item-icon">✅</span><span>${p}</span></div>`).join('')}` : ''}
+        ${alt.length ? `<div class="sec-label">Alertas</div>${alt.map(a=>`<div class="item-row"><span class="item-icon">⚠️</span><span>${a}</span></div>`).join('')}` : ''}
+        ${prg.length ? `<div class="sec-label">Perguntas para entrevista</div>${prg.map((p,i)=>`<div class="item-row"><span class="item-icon" style="color:var(--navy);font-weight:700;min-width:16px">${i+1}.</span><span>${p}</span></div>`).join('')}` : ''}`;
+}
+
+// ================================================================
+// ANALISAR CV
+// ================================================================
+async function startAnalysis(candidaturaId) {
+    const key = getClaudeKey();
+    if (!key) {
+        if (confirm('Chave da API Claude não configurada. Configurar agora?')) openSetupModal();
+        return;
+    }
+    const { data: c } = await sb.from('candidaturas').select('*, vaga:vagas(*)').eq('id', candidaturaId).single();
+    if (!c?.curriculo_texto) { openCvTextModal(candidaturaId, c?.vaga); return; }
+    await executarAnalise(candidaturaId, c.curriculo_texto, c.vaga);
+}
+
+async function executarAnalise(candidaturaId, cvTexto, vaga) {
+    // Busca cargo vinculado no Firebase (se existir)
+    const cargo = vaga?.cargo_id ? await buscarCargoFirebase(vaga.cargo_id) : null;
+    const area = document.getElementById(`analise-area-${candidaturaId}`);
+    if (area) {
+        area.innerHTML = `<div class="loading" id="dots-${candidaturaId}">Analisando com Claude<span id="d${candidaturaId}">...</span></div>`;
+        let n = 0;
+        window._dotInterval = setInterval(() => {
+            const el = document.getElementById('d' + candidaturaId);
+            if (el) el.textContent = '.'.repeat((n++ % 3) + 1);
+        }, 500);
+    }
+
+    const PROMPT = `# AGENTE DE TRIAGEM — ECGNOW
+
+## IDENTIDADE
+Você é o agente de triagem de currículos da ECGNOW Telecardiologia.
+Regra absoluta: você nunca reprova ninguém. Você classifica, resume e alerta. A decisão final é sempre da analista de RH.
+
+## SOBRE A ECGNOW
+Empresa de tecnologia em telecardiologia diagnóstica. Desenvolve software com IA e conecta clínicas, hospitais e laboratórios a especialistas para laudos de ECG, Holter, MAPA e Teste Ergométrico em até 10 minutos, 24h/dia.
+Valores: Criatividade, Comprometimento, Ética, Excelência, Inovação.
+
+## CRITÉRIOS
+1. Experiência: relação com o cargo, evolução, descrição clara das atividades. Profundidade acumulada (8+ anos em vendas consultivas com metodologias comprovadas) supera o título exato. Experiência no setor de saúde é diferencial específico.
+2. Permanência: menos de 1 ano em TODAS as empresas = alerta (job hopper). Episódios isolados podem ter justificativa.
+3. Formação e cursos: atende ao requisito? Cursos demonstram vontade de crescer.
+4. Localização: candidato em outro estado para vaga presencial/híbrida = alerta.
+5. Pretensão salarial: se muito acima = alerta; se não informada, não penalizar.
+6. Qualidade do CV: currículo bem escrito e organizado é positivo.
+7. Potencial: mesmo sem experiência exata, cursos e habilidades transferíveis contam.
+
+## CLASSIFICAÇÕES
+- Altamente compatível: experiência diretamente alinhada + formação + sem alertas relevantes — OU 8+ anos em vendas consultivas com metodologias comprovadas e resultados documentados.
+- Compatível: experiência relacionada, atende requisitos principais, pode ter ponto de atenção menor.
+- Potencial: sem experiência exata mas demonstra aprendizado, cursos, habilidades transferíveis.
+- Pouco compatível: sem relação com o cargo, não atende requisitos mínimos ou múltiplos alertas.
+
+## CARGO
+Título: ${vaga?.titulo || 'Não especificado'}
+Setor: ${vaga?.setor || ''}
+Modalidade: ${vaga?.modalidade || 'Não especificada'}
+Localização: ${vaga?.localizacao || 'Não especificada'}
+${cargo ? formatarCargoParaPrompt(cargo) : (vaga?.descricao_completa || vaga?.descricao_curta || '')}
+${vaga?.descricao_completa && cargo ? '\nInformações adicionais da vaga: ' + vaga.descricao_completa : ''}
+
+## CURRÍCULO
+${cvTexto}
+
+## INSTRUÇÕES
+Retorne APENAS o JSON abaixo, sem texto antes ou depois, sem markdown:
+{"candidato":{"nome":"","email":"","telefone":"","localizacao":"","formacao":"","cursos":[]},"classificacao":"","justificativa_classificacao":"","resumo_profissional":"","pontos_positivos":[],"alertas":[],"perguntas_entrevista":[]}`;
+
+    try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': getClaudeKey(),
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true',
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 2000,
+                messages: [{ role: 'user', content: PROMPT }],
+            }),
+        });
+
+        if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'Erro na API'); }
+
+        const result = await res.json();
+        const raw = result.content[0].text;
+        const cleaned = raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+        const parsed = JSON.parse(cleaned);
+
+        await sb.from('analises_cv').upsert({
+            candidatura_id:              candidaturaId,
+            classificacao:               parsed.classificacao,
+            justificativa_classificacao: parsed.justificativa_classificacao,
+            resumo_profissional:         parsed.resumo_profissional,
+            pontos_positivos:            parsed.pontos_positivos || [],
+            alertas:                     parsed.alertas || [],
+            perguntas_entrevista:        parsed.perguntas_entrevista || [],
+            raw_json:                    parsed,
+        }, { onConflict: 'candidatura_id' });
+
+        clearInterval(window._dotInterval);
+        if (area) area.innerHTML = renderAnalise({
+            classificacao:               parsed.classificacao,
+            justificativa_classificacao: parsed.justificativa_classificacao,
+            resumo_profissional:         parsed.resumo_profissional,
+            pontos_positivos:            parsed.pontos_positivos || [],
+            alertas:                     parsed.alertas || [],
+            perguntas_entrevista:        parsed.perguntas_entrevista || [],
+        });
+
+        toast('Análise concluída!', 'success');
+        if (S.view === 'candidatos' && S.vaga) loadCandidatos(S.vaga.id);
+
+    } catch (err) {
+        clearInterval(window._dotInterval);
+        if (area) area.innerHTML = `
+            <div style="background:#fee2e2;border:1px solid #fecaca;border-radius:10px;padding:16px">
+                <p style="color:#dc2626;font-weight:600">Erro na análise</p>
+                <p style="color:#dc2626;font-size:.85rem;margin-top:4px">${err.message}</p>
+                <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="startAnalysis('${candidaturaId}')">Tentar novamente</button>
+            </div>`;
+        toast('Erro: ' + err.message, 'error');
+    }
+}
+
+// ================================================================
+// MODAL: TEXTO DO CV
+// ================================================================
+function openCvTextModal(candidaturaId, vaga) {
+    showModal(`
+        <div class="modal-header">
+            <div>
+                <div style="font-family:'Montserrat',sans-serif;font-weight:700">Texto do Currículo</div>
+                <div style="font-size:.82rem;color:var(--muted);margin-top:3px">Cole o texto extraído do CV para análise</div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Texto completo do currículo *</label>
+                <textarea id="cv-text-input" rows="14" placeholder="Abra o PDF, selecione tudo (Ctrl+A) e cole aqui..."></textarea>
+            </div>
+            <p style="font-size:.76rem;color:var(--muted)">O texto ficará salvo e será usado em análises futuras.</p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="salvarCvTexto('${candidaturaId}')">Salvar e analisar →</button>
+            <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+        </div>`);
+}
+
+async function salvarCvTexto(candidaturaId) {
+    const texto = document.getElementById('cv-text-input').value.trim();
+    if (!texto) { alert('Cole o texto do currículo antes de continuar.'); return; }
+    await sb.from('candidaturas').update({ curriculo_texto: texto }).eq('id', candidaturaId);
+    const { data: c } = await sb.from('candidaturas').select('*, vaga:vagas(*)').eq('id', candidaturaId).single();
+    closeModal();
+    await openCandidatoModal(candidaturaId);
+    setTimeout(() => executarAnalise(candidaturaId, texto, c?.vaga), 300);
+}
+
+// ================================================================
+// MODAL: ADICIONAR CANDIDATO
+// ================================================================
+async function openAddModal() {
+    const v = S.vaga;
+    if (!v) return;
+    const { data: banco } = await sb.from('banco_talentos').select('*').order('created_at', { ascending: false }).limit(80);
+    S.bancoMap = Object.fromEntries((banco || []).map(b => [b.id, b]));
+    const opts = (banco || []).map(b =>
+        `<option value="${b.id}">${b.nome} — ${b.area_interesse || b.email || ''}</option>`
+    ).join('');
+
+    showModal(`
+        <div class="modal-header">
+            <div>
+                <div style="font-family:'Montserrat',sans-serif;font-weight:700">Adicionar Candidato</div>
+                <div style="font-size:.82rem;color:var(--muted);margin-top:3px">Vaga: ${v.titulo}</div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            ${opts ? `<div class="form-group">
+                <label>Selecionar do banco de talentos (opcional)</label>
+                <select id="banco-sel" onchange="preencherBanco(this)">
+                    <option value="">— Preencher manualmente —</option>${opts}
+                </select>
+            </div><hr>` : ''}
+            <div class="form-row">
+                <div class="form-group"><label>Nome completo *</label><input type="text" id="a-nome" placeholder="Nome do candidato"></div>
+                <div class="form-group"><label>E-mail</label><input type="email" id="a-email" placeholder="email@exemplo.com"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Telefone</label><input type="text" id="a-tel" placeholder="(11) 99999-9999"></div>
+                <div class="form-group"><label>Localização</label><input type="text" id="a-loc" placeholder="São Paulo, SP"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>LinkedIn</label><input type="text" id="a-li" placeholder="https://linkedin.com/in/..."></div>
+                <div class="form-group"><label>URL do currículo</label><input type="text" id="a-url" placeholder="Link para o arquivo"></div>
+            </div>
+            <div class="form-group">
+                <label>Texto do currículo <span style="font-weight:400;color:var(--muted)">(cole para habilitar análise automática)</span></label>
+                <textarea id="a-texto" rows="7" placeholder="Selecione tudo no PDF e cole aqui..."></textarea>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="criarCandidatura()">Adicionar</button>
+            <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+        </div>`);
+}
+
+function preencherBanco(sel) {
+    const id = sel.value;
+    if (!id) return;
+    const b = S.bancoMap?.[id];
+    if (!b) return;
+    document.getElementById('a-nome').value  = b.nome       || '';
+    document.getElementById('a-email').value = b.email      || '';
+    document.getElementById('a-tel').value   = b.telefone   || '';
+    document.getElementById('a-loc').value   = b.localizacao || '';
+    document.getElementById('a-li').value    = b.linkedin   || '';
+    document.getElementById('a-url').value   = b.curriculo_url || '';
+    const textoArea = document.getElementById('a-texto');
+    if (b.curriculo_texto) {
+        textoArea.value = b.curriculo_texto;
+        textoArea.style.borderColor = '#16a34a';
+        textoArea.previousElementSibling.innerHTML = 'Texto do currículo <span style="font-weight:600;color:#16a34a">✓ extraído automaticamente</span>';
+    } else {
+        textoArea.value = '';
+        textoArea.style.borderColor = '';
+        textoArea.previousElementSibling.innerHTML = 'Texto do currículo <span style="font-weight:400;color:var(--muted)">(cole para habilitar análise automática)</span>';
+    }
+}
+
+async function criarCandidatura() {
+    const nome = document.getElementById('a-nome').value.trim();
+    if (!nome) { alert('Nome é obrigatório.'); return; }
+    const bancoId = document.getElementById('banco-sel')?.value || null;
+    const texto   = document.getElementById('a-texto').value.trim() || null;
+
+    const { data: created, error } = await sb.from('candidaturas').insert([{
+        vaga_id:           S.vaga.id,
+        banco_talentos_id: bancoId || null,
+        nome,
+        email:           document.getElementById('a-email').value.trim() || null,
+        telefone:        document.getElementById('a-tel').value.trim()   || null,
+        localizacao:     document.getElementById('a-loc').value.trim()   || null,
+        linkedin:        document.getElementById('a-li').value.trim()    || null,
+        curriculo_url:   document.getElementById('a-url').value.trim()   || null,
+        curriculo_texto: texto,
+        etapa:           'triagem',
+    }]).select().single();
+
+    if (error) { toast('Erro: ' + error.message, 'error'); return; }
+
+    closeModal();
+    toast('Candidato adicionado!', 'success');
+    await loadCandidatos(S.vaga.id);
+
+    if (texto) {
+        const { data: c } = await sb.from('candidaturas').select('*, vaga:vagas(*)').eq('id', created.id).single();
+        await openCandidatoModal(created.id);
+        setTimeout(() => executarAnalise(created.id, texto, c?.vaga), 350);
+    }
+}
+
+// ================================================================
+// COMPETÊNCIAS & AVALIAÇÃO
+// ================================================================
+const COMPETENCIAS = {
+    tecnicas: [
+        'Conhecimento técnico da função',
+        'Experiência prática na área',
+        'Domínio de ferramentas e processos'
+    ],
+    comportamentais: [
+        'Comunicação e expressão',
+        'Trabalho em equipe',
+        'Proatividade e iniciativa',
+        'Flexibilidade e adaptabilidade',
+        'Resolução de problemas'
+    ],
+    organizacionais: [
+        'Alinhamento com valores da empresa',
+        'Orientação para resultados',
+        'Comprometimento e responsabilidade',
+        'Foco no cliente interno'
+    ]
+};
+const NOTA_LABELS = ['', 'Insuficiente', 'Abaixo', 'Adequado', 'Acima', 'Excelente'];
+
+const _avalCompetencias = {}; // { "candId-tipo": { tecnicas, comportamentais, organizacionais } }
+
+function renderAvaliacaoForm(candId, tipo, avalData, cargo = null) {
+    if (tipo === 'teste_pratico') {
+        const texto = avalData?.registro || '';
+        const nota = avalData?.pontuacao_media ?? '';
+        return `<div class="avaliacao-bloco">
+            <div class="form-group">
+                <label>Parecer do avaliador</label>
+                <textarea id="av-reg-${candId}" rows="5" placeholder="Descreva o desempenho do candidato no teste prático...">${texto}</textarea>
+            </div>
+            <div class="form-group">
+                <label>Nota (0–10)</label>
+                <input type="number" id="av-nota-${candId}" min="0" max="10" step="0.5" value="${nota}" placeholder="Ex: 7.5" style="max-width:120px">
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+                <button class="btn btn-primary btn-sm" onclick="salvarAvaliacao('${candId}','teste_pratico')">Salvar avaliação</button>
+                ${avalData ? `<span style="color:#16a34a;font-size:.78rem;font-weight:600">✓ Salvo</span>` : ''}
+            </div>
+        </div>`;
+    }
+
+    // entrevista_rh ou gestor
+    const grupos = [
+        { key: 'tecnicas',         label: 'Competências Técnicas' },
+        { key: 'comportamentais',  label: 'Competências Comportamentais' },
+        { key: 'organizacionais',  label: 'Competências Organizacionais' }
+    ];
+    const tipoLabel = tipo === 'entrevista_rh' ? 'entrevista' : 'avaliação';
+
+    // Usa competências do cargo (Firebase) se disponível, senão usa o padrão
+    const compEfetivas = {
+        tecnicas:        cargo?.comp_tecnicas?.map(c => c.nome).filter(Boolean)        || COMPETENCIAS.tecnicas,
+        comportamentais: cargo?.comp_comportamentais?.map(c => c.nome).filter(Boolean) || COMPETENCIAS.comportamentais,
+        organizacionais: cargo?.comp_organizacionais?.map(c => c.nome).filter(Boolean) || COMPETENCIAS.organizacionais,
+    };
+    _avalCompetencias[`${candId}-${tipo}`] = compEfetivas;
+
+    const gruposHtml = grupos.map(g => {
+        const existente = avalData?.[`competencias_${g.key}`] || [];
+        const media = existente.length && existente.some(x => x.nota > 0)
+            ? (existente.filter(x => x.nota > 0).reduce((s, x) => s + x.nota, 0) / existente.filter(x => x.nota > 0).length).toFixed(1)
+            : null;
+
+        const rows = compEfetivas[g.key].map((nome, i) => {
+            const notaAtual = existente.find(x => x.nome === nome)?.nota || 0;
+            const btns = [1,2,3,4,5].map(n =>
+                `<button type="button" class="csb${notaAtual === n ? ` s${n}` : ''}"
+                    title="${NOTA_LABELS[n]}"
+                    onclick="setCompScore('${candId}','${tipo}','${g.key}',${i},${n})">${n}</button>`
+            ).join('');
+            return `<div class="comp-row">
+                <span class="comp-nome">${nome}</span>
+                <div class="comp-scores" id="csc-${candId}-${tipo}-${g.key}-${i}">${btns}</div>
+            </div>`;
+        }).join('');
+
+        return `<div class="comp-grupo">
+            <div class="comp-grupo-titulo">${g.label}${media ? `<span class="comp-media">${media}</span>` : ''}</div>
+            ${rows}
+        </div>`;
+    }).join('');
+
+    const registro = avalData?.registro || '';
+    const obs = avalData?.observacoes || '';
+
+    return `<div class="avaliacao-bloco">
+        ${cargo ? `<div style="font-size:.78rem;color:#2563eb;margin-bottom:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:6px 10px">Competências do cargo: <strong>${cargo.titulo || cargo.id}</strong></div>` : ''}
+        ${gruposHtml}
+        <div class="form-group" style="margin-top:10px">
+            <label>Registro da ${tipoLabel}</label>
+            <textarea id="av-reg-${candId}" rows="4" placeholder="Registre os pontos discutidos na ${tipoLabel}...">${registro}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Observações</label>
+            <textarea id="av-obs-${candId}" rows="2" placeholder="Observações adicionais...">${obs}</textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+            <button class="btn btn-primary btn-sm" onclick="salvarAvaliacao('${candId}','${tipo}')">Salvar avaliação</button>
+            ${avalData ? `<span style="color:#16a34a;font-size:.78rem;font-weight:600">✓ Salvo</span>` : ''}
+        </div>
+    </div>`;
+}
+
+// ================================================================
+// VISÃO GERAL — RADAR CHART + RELATÓRIO FINAL
+// ================================================================
+
+function desenharRadar(comps, series, size = 240) {
+    const n = comps.length;
+    if (n < 3) {
+        // Fallback: barras horizontais simples se < 3 competências
+        return comps.map(({nome}, i) => {
+            const bars = series.map(s => {
+                const v = s.values[i];
+                if (v == null) return '';
+                const pct = Math.round((v / 5) * 100);
+                return `<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+                    <span style="font-size:.68rem;color:var(--muted);width:40px;text-align:right">${s.label}</span>
+                    <div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px"><div style="width:${pct}%;height:100%;background:${s.color};border-radius:4px"></div></div>
+                    <span style="font-size:.7rem;color:${s.color};font-weight:700;width:22px">${v.toFixed(1)}</span>
+                </div>`;
+            }).join('');
+            return `<div style="margin-bottom:10px"><div style="font-size:.8rem;margin-bottom:4px">${nome}</div>${bars}</div>`;
+        }).join('');
+    }
+
+    const cx = size / 2, cy = size / 2;
+    const r  = size * 0.29;   // raio da área do gráfico
+    const angle = i => (2 * Math.PI * i / n) - Math.PI / 2;
+    const pt    = (val, i) => {
+        const a = angle(i);
+        const d = Math.max(0, (val / 5)) * r;
+        return [+(cx + d * Math.cos(a)).toFixed(2), +(cy + d * Math.sin(a)).toFixed(2)];
+    };
+
+    // Grade (polígonos concêntricos 1–5)
+    const grid = [1,2,3,4,5].map(lvl => {
+        const pts = Array.from({length: n}, (_, i) => pt(lvl, i).join(',')).join(' ');
+        return `<polygon points="${pts}" fill="${lvl % 2 === 0 ? '#f3f4f6' : 'none'}" stroke="#d1d5db" stroke-width="${lvl === 5 ? 1.4 : 0.6}"/>`;
+    }).join('');
+
+    // Valor nos eixos (só no eixo 0)
+    const gridLabels = [1,2,3,4,5].map(lvl => {
+        const [x, y] = pt(lvl, 0);
+        return `<text x="${x+2}" y="${y-1}" font-size="7" fill="#9ca3af">${lvl}</text>`;
+    }).join('');
+
+    // Eixos
+    const axes = Array.from({length: n}, (_, i) => {
+        const [x, y] = pt(5, i);
+        return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#d1d5db" stroke-width="0.8"/>`;
+    }).join('');
+
+    // Labels das competências
+    const lblR = r * 1.44;
+    const labels = comps.map(({nome}, i) => {
+        const a  = angle(i);
+        const lx = +(cx + lblR * Math.cos(a)).toFixed(2);
+        const ly = +(cy + lblR * Math.sin(a)).toFixed(2);
+        const anchor = lx < cx - 5 ? 'end' : lx > cx + 5 ? 'start' : 'middle';
+        const trunc  = nome.length > 18 ? nome.slice(0, 17) + '…' : nome;
+        return `<text x="${lx}" y="${ly}" text-anchor="${anchor}" dominant-baseline="middle" font-size="9.5" font-family="system-ui,sans-serif" fill="#374151">${trunc}</text>`;
+    }).join('');
+
+    // Polígonos de dados (ordem: exigido, rh, gestor, média — do fundo para frente)
+    const polygons = series.map(({color, values, opacity}) => {
+        if (!values.some(v => v != null && v > 0)) return '';
+        const pts = values.map((v, i) => pt(v ?? 0, i).join(',')).join(' ');
+        return `<polygon points="${pts}" fill="${color}" fill-opacity="${opacity ?? 0.15}" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>`;
+    }).join('');
+
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="overflow:visible;display:block">
+        ${grid}${axes}${gridLabels}${polygons}${labels}
+        <circle cx="${cx}" cy="${cy}" r="2.5" fill="#9ca3af"/>
+    </svg>`;
+}
+
+function renderVisaoGeral(candId, avaliacoes, cargo) {
+    const avalRH     = avaliacoes.find(a => a.tipo === 'entrevista_rh');
+    const avalGestor = avaliacoes.find(a => a.tipo === 'gestor');
+
+    const norm = list => (list || []).map(x => typeof x === 'string' ? { nome: x, grau: null } : x);
+
+    const grupos = [
+        { key: 'tecnicas',        label: 'Técnicas' },
+        { key: 'comportamentais', label: 'Comportamentais' },
+        { key: 'organizacionais', label: 'Organizacionais' },
+    ];
+
+    const compEfetivas = {
+        tecnicas:        norm(cargo?.comp_tecnicas        || COMPETENCIAS.tecnicas.map(n => ({ nome: n, grau: null }))),
+        comportamentais: norm(cargo?.comp_comportamentais || COMPETENCIAS.comportamentais.map(n => ({ nome: n, grau: null }))),
+        organizacionais: norm(cargo?.comp_organizacionais || COMPETENCIAS.organizacionais.map(n => ({ nome: n, grau: null }))),
+    };
+
+    let totalPonderada = 0, totalPesos = 0;
+
+    const gruposHtml = grupos.map(g => {
+        const lista      = compEfetivas[g.key];
+        const rhComp     = avalRH?.[`competencias_${g.key}`]     || [];
+        const gestorComp = avalGestor?.[`competencias_${g.key}`] || [];
+
+        const grauVals   = lista.map(({grau}) => grau ?? null);
+        const rhVals     = lista.map(({nome}) => rhComp.find(x => x.nome === nome)?.nota ?? null);
+        const gestorVals = lista.map(({nome}) => gestorComp.find(x => x.nome === nome)?.nota ?? null);
+        const mediaVals  = lista.map((_, i) => {
+            const rh = rhVals[i], ge = gestorVals[i];
+            const med = (rh != null && ge != null) ? (rh + ge) / 2
+                      : rh != null ? rh
+                      : ge != null ? ge : null;
+            if (med != null) { totalPonderada += med; totalPesos++; }
+            return med;
+        });
+
+        const series = [
+            ...(grauVals.some(v => v != null)   ? [{ label:'Exigido', color:'#94a3b8', values: grauVals,   opacity: 0.10 }] : []),
+            ...(rhVals.some(v => v != null)      ? [{ label:'RH',      color:'#2563eb', values: rhVals,     opacity: 0.18 }] : []),
+            ...(gestorVals.some(v => v != null)  ? [{ label:'Gestor',  color:'#16a34a', values: gestorVals, opacity: 0.18 }] : []),
+            ...(mediaVals.some(v => v != null)   ? [{ label:'Média',   color:'#d97706', values: mediaVals,  opacity: 0.20 }] : []),
+        ];
+
+        if (!series.length) return '';
+
+        // Tabela resumida abaixo do gráfico
+        const tabelaHtml = `<table style="width:100%;font-size:.72rem;border-collapse:collapse;margin-top:10px">
+            <thead><tr>
+                <th style="text-align:left;color:var(--muted);padding:3px 4px;font-weight:600">Competência</th>
+                ${avalRH     ? `<th style="text-align:center;color:#2563eb;padding:3px 4px">RH</th>` : ''}
+                ${avalGestor ? `<th style="text-align:center;color:#16a34a;padding:3px 4px">Gestor</th>` : ''}
+                <th style="text-align:center;color:#d97706;padding:3px 4px">Média</th>
+            </tr></thead>
+            <tbody>
+            ${lista.map(({nome}, i) => {
+                const med = mediaVals[i];
+                const medStr = med != null ? med.toFixed(1) : '—';
+                const medColor = med == null ? '#9ca3af' : med >= 4 ? '#16a34a' : med >= 3 ? '#d97706' : '#dc2626';
+                return `<tr style="border-top:1px solid #f3f4f6">
+                    <td style="padding:3px 4px">${nome}</td>
+                    ${avalRH     ? `<td style="text-align:center;padding:3px 4px">${rhVals[i] ?? '—'}</td>` : ''}
+                    ${avalGestor ? `<td style="text-align:center;padding:3px 4px">${gestorVals[i] ?? '—'}</td>` : ''}
+                    <td style="text-align:center;padding:3px 4px;font-weight:700;color:${medColor}">${medStr}</td>
+                </tr>`;
+            }).join('')}
+            </tbody>
+        </table>`;
+
+        return `<div style="margin-bottom:24px">
+            <div class="sl-grupo-titulo" style="margin-bottom:10px">${g.label}</div>
+            <div style="padding:12px 24px;overflow:visible">${desenharRadar(lista, series, 240)}</div>
+            ${tabelaHtml}
+        </div>`;
+    }).filter(Boolean).join('');
+
+    const mediaGeral = totalPesos > 0 ? (totalPonderada / totalPesos).toFixed(2) : null;
+
+    const legendaHtml = `<div class="vg-legenda" style="margin-bottom:16px">
+        ${cargo                                               ? `<div class="vg-legenda-item"><svg width="12" height="12"><polygon points="0,6 6,0 12,6 6,12" fill="#94a3b8"/></svg> Exigido</div>` : ''}
+        ${avalRH     ? `<div class="vg-legenda-item"><div class="vg-legenda-cor" style="background:#2563eb"></div>RH</div>`     : ''}
+        ${avalGestor ? `<div class="vg-legenda-item"><div class="vg-legenda-cor" style="background:#16a34a"></div>Gestor</div>` : ''}
+        <div class="vg-legenda-item"><div class="vg-legenda-cor" style="background:#d97706"></div>Média</div>
+    </div>`;
+
+    return `<div class="vg-bloco">
+        <div class="vg-titulo">Comparativo de Competências</div>
+        ${legendaHtml}
+        ${gruposHtml || '<p style="color:var(--muted);font-size:.82rem">Nenhuma avaliação registrada ainda.</p>'}
+        ${mediaGeral ? `<div class="vg-media-total">
+            <span class="vg-media-total-lbl">Média geral ponderada</span>
+            <span class="vg-media-total-val">${mediaGeral} / 5.0</span>
+        </div>` : ''}
+    </div>
+    <div class="vg-bloco">
+        <div class="vg-titulo">Relatório Final</div>
+        <button class="btn btn-bronze" onclick="gerarRelatorioFinal('${candId}')" style="margin-bottom:12px">✨ Gerar com Claude</button>
+        <div id="relatorio-final-area-${candId}"></div>
+    </div>`;
+}
+
+async function gerarRelatorioFinal(candId) {
+    const key = getClaudeKey();
+    if (!key) { openKeyModal(); return; }
+
+    const area = document.getElementById(`relatorio-final-area-${candId}`);
+    if (!area) return;
+    area.innerHTML = `<div class="loading">Gerando relatório final...</div>`;
+
+    const { c, cargo } = window._candidatoAtual || {};
+    if (!c) { area.innerHTML = '<p style="color:red">Erro: dados do candidato não encontrados.</p>'; return; }
+
+    const avalRH     = c.avaliacoes?.find(a => a.tipo === 'entrevista_rh');
+    const avalGestor = c.avaliacoes?.find(a => a.tipo === 'gestor');
+    const notas      = (c.notas_candidatura || []).map(n => n.conteudo).join('\n');
+
+    // Monta resumo de competências
+    const grupos = ['tecnicas', 'comportamentais', 'organizacionais'];
+    const compResumo = grupos.map(g => {
+        const rhComp     = avalRH?.[`competencias_${g}`]     || [];
+        const gestorComp = avalGestor?.[`competencias_${g}`] || [];
+        const nomes = [...new Set([...rhComp.map(x => x.nome), ...gestorComp.map(x => x.nome)])];
+        if (!nomes.length) return '';
+        const linhas = nomes.map(nome => {
+            const rh = rhComp.find(x => x.nome === nome)?.nota;
+            const ge = gestorComp.find(x => x.nome === nome)?.nota;
+            const med = (rh != null && ge != null) ? ((rh+ge)/2).toFixed(1) : (rh ?? ge ?? '—');
+            return `  - ${nome}: RH=${rh ?? '—'} | Gestor=${ge ?? '—'} | Média=${med}`;
+        }).join('\n');
+        return `${g.toUpperCase()}:\n${linhas}`;
+    }).filter(Boolean).join('\n\n');
+
+    const discResumo = c.disc_perfil
+        ? `Perfil DISC: ${c.disc_perfil} — E:${c.disc_e||0} / C:${c.disc_c||0} / P:${c.disc_p||0} / A:${c.disc_a||0}`
+        : '';
+
+    const prompt = `Você é um especialista em Recursos Humanos e avaliação de talentos. Com base nas informações abaixo, elabore um relatório final consolidado sobre o candidato ${c.nome} para a vaga de ${c.vaga?.titulo || 'não informado'}${cargo ? ` (cargo: ${cargo.titulo})` : ''}.
+
+## Dados do candidato
+
+**Nome:** ${c.nome}
+**Vaga:** ${c.vaga?.titulo || '—'} | Setor: ${c.vaga?.setor || '—'}
+${cargo ? `**Cargo:** ${cargo.titulo}\n**Missão do cargo:** ${cargo.missao || '—'}` : ''}
+
+${discResumo}
+
+## Avaliações de competências
+${compResumo || 'Nenhuma avaliação de competências registrada.'}
+
+## Entrevista com RH
+${avalRH?.registro || 'Sem registro.'}
+Observações: ${avalRH?.observacoes || '—'}
+
+## Entrevista com Gestor
+${avalGestor?.registro || 'Sem registro.'}
+Observações: ${avalGestor?.observacoes || '—'}
+
+## Notas internas
+${notas || 'Nenhuma nota registrada.'}
+
+---
+
+Gere um relatório estruturado com as seguintes seções:
+
+1. **Síntese do candidato** — quem é a pessoa, pontos de destaque
+2. **Desempenho nas entrevistas** — como se saiu com o RH e com o gestor
+3. **Análise de competências** — pontos fortes e gaps em relação ao cargo
+4. **Perfil comportamental** — como o DISC se conecta com as exigências do cargo
+5. **Pontos de atenção** — riscos ou aspectos a observar
+6. **Recomendação final** — Aprovado / Em análise / Não recomendado — com justificativa clara
+
+Use linguagem profissional, objetiva e direta. O relatório será lido pelo RH e pela liderança para tomar a decisão final de contratação.`;
+
+    try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 2000,
+                messages: [{ role: 'user', content: prompt }],
+            }),
+        });
+        if (!res.ok) throw new Error(`API: ${res.status}`);
+        const data = await res.json();
+        const texto = data.content?.[0]?.text || '';
+        area.innerHTML = texto
+            .replace(/^#{1,3} (.+)$/gm, '<h3>$1</h3>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^- (.+)$/gm, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/gs, m => `<ul>${m}</ul>`)
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/^(?!<[hup])/gm, '<p>')
+            .replace(/(?<![>])$/gm, '</p>')
+            .replace(/<p><\/p>/g, '');
+    } catch (err) {
+        area.innerHTML = `<p style="color:red">Erro ao gerar relatório: ${err.message}</p>`;
+    }
+}
+
+function setCompScore(candId, tipo, grupo, compIdx, nota) {
+    const containerId = `csc-${candId}-${tipo}-${grupo}-${compIdx}`;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll('.csb').forEach((b, i) => {
+        const n = i + 1;
+        b.className = 'csb' + (n === nota ? ` s${nota}` : '');
+    });
+}
+
+async function salvarAvaliacao(candId, tipo) {
+    let payload = { candidatura_id: candId, tipo, atualizado_em: new Date().toISOString() };
+
+    if (tipo === 'teste_pratico') {
+        payload.registro = document.getElementById(`av-reg-${candId}`)?.value?.trim() || null;
+        const notaEl = document.getElementById(`av-nota-${candId}`);
+        payload.pontuacao_media = notaEl ? (parseFloat(notaEl.value) || null) : null;
+    } else {
+        const grupos = ['tecnicas','comportamentais','organizacionais'];
+        const compAtual = _avalCompetencias[`${candId}-${tipo}`] || COMPETENCIAS;
+        for (const g of grupos) {
+            payload[`competencias_${g}`] = compAtual[g].map((nome, i) => {
+                const cont = document.getElementById(`csc-${candId}-${tipo}-${g}-${i}`);
+                const active = cont?.querySelector('.csb[class*=" s"]');
+                const nota = active ? parseInt(active.textContent) : 0;
+                return { nome, nota };
+            });
+        }
+        const allNotas = ['tecnicas','comportamentais','organizacionais']
+            .flatMap(g => payload[`competencias_${g}`]).map(x => x.nota).filter(n => n > 0);
+        payload.pontuacao_media = allNotas.length
+            ? parseFloat((allNotas.reduce((a,b) => a+b,0) / allNotas.length).toFixed(2))
+            : null;
+        payload.registro    = document.getElementById(`av-reg-${candId}`)?.value?.trim() || null;
+        payload.observacoes = document.getElementById(`av-obs-${candId}`)?.value?.trim() || null;
+    }
+
+    const { error } = await sb.from('avaliacoes').upsert(payload, { onConflict: 'candidatura_id,tipo' });
+    if (error) { toast('Erro ao salvar: ' + error.message, 'error'); return; }
+    toast('Avaliação salva!', 'success');
+    await openCandidatoModal(candId);
+    if (S.vaga) loadCandidatos(S.vaga.id);
+}
+
+// ================================================================
+// KANBAN / VISTA / RANKING
+// ================================================================
+function setCandView(v) {
+    S.subView = v;
+    ['lista','kanban','ranking'].forEach(k => {
+        const btn = document.getElementById('cv-btn-' + k);
+        if (btn) btn.classList.toggle('active', k === v);
+    });
+    if (v === 'ranking') renderRanking();
+    else if (S.vaga) loadCandidatos(S.vaga.id);
+}
+
+async function renderRanking() {
+    const el = document.getElementById('c-content');
+    if (!el) return;
+    el.innerHTML = '<div class="loading">Calculando ranking...</div>';
+
+    const { data: rows } = await sb
+        .from('candidaturas')
+        .select('*, analises_cv(*), avaliacoes(*)')
+        .eq('vaga_id', S.vaga.id)
+        .order('created_at', { ascending: false });
+
+    if (!rows?.length) { el.innerHTML = '<div class="empty"><h3>Nenhum candidato ainda</h3></div>'; return; }
+
+    const cScore = { 'Altamente compatível': 10, 'Compatível': 7.5, 'Potencial': 5, 'Pouco compatível': 2.5 };
+
+    const ranked = rows.map(r => {
+        const avals = r.avaliacoes || [];
+        const rh     = avals.find(a => a.tipo === 'entrevista_rh')?.pontuacao_media;
+        const teste  = avals.find(a => a.tipo === 'teste_pratico')?.pontuacao_media;
+        const gestor = avals.find(a => a.tipo === 'gestor')?.pontuacao_media;
+        const classif = r.analises_cv?.classificacao;
+        const cn = classif ? cScore[classif] ?? null : null;
+        // Normalize RH/Gestor from 1-5 to 0-10
+        const rhN     = rh     != null ? rh * 2     : null;
+        const gestorN = gestor != null ? gestor * 2 : null;
+        const parts   = [cn, rhN, teste, gestorN].filter(x => x != null);
+        const total   = parts.length ? parseFloat((parts.reduce((a,b) => a+b,0) / parts.length).toFixed(1)) : 0;
+        return { ...r, _rh: rh, _teste: teste, _gestor: gestor, _classif: classif, _total: total };
+    }).sort((a,b) => b._total - a._total);
+
+    const s = v => v != null ? `<span class="score-val">${typeof v === 'number' ? v.toFixed(1) : v}</span>` : '<span class="score-na">—</span>';
+    const rows_html = ranked.map((r, i) => {
+        const pos = i + 1;
+        const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `<span style="color:var(--muted)">${pos}</span>`;
+        return `<tr class="rank-${pos <= 3 ? pos : ''}" onclick="openCandidatoModal('${r.id}')" style="cursor:pointer">
+            <td style="text-align:center"><span class="rank-medal">${medal}</span></td>
+            <td><div class="td-name">${r.nome}</div><div class="td-sub">${r.email||''}</div></td>
+            <td>${r._classif ? classifBadge(r._classif) : '<span class="score-na">—</span>'}</td>
+            <td style="text-align:center">${s(r._rh)}</td>
+            <td style="text-align:center">${s(r._teste)}</td>
+            <td style="text-align:center">${s(r._gestor)}</td>
+            <td style="text-align:center"><span class="score-total">${r._total > 0 ? r._total : '—'}</span></td>
+        </tr>`;
+    }).join('');
+
+    el.innerHTML = `<div class="table-wrap"><table>
+        <thead><tr>
+            <th style="text-align:center;width:40px">#</th>
+            <th>Candidato</th>
+            <th>Triagem</th>
+            <th style="text-align:center">Entrevista RH<br><span style="font-size:.7rem;font-weight:400">(0–5)</span></th>
+            <th style="text-align:center">Teste Prático<br><span style="font-size:.7rem;font-weight:400">(0–10)</span></th>
+            <th style="text-align:center">Gestor<br><span style="font-size:.7rem;font-weight:400">(0–5)</span></th>
+            <th style="text-align:center">Score Total<br><span style="font-size:.7rem;font-weight:400">(0–10)</span></th>
+        </tr></thead>
+        <tbody>${rows_html}</tbody>
+    </table></div>`;
+}
+
+// ================================================================
+// ETAPAS
+// ================================================================
+async function moverEtapa(candidaturaId, novaEtapa, novaLabel) {
+    const { data: c } = await sb.from('candidaturas').select('etapa').eq('id', candidaturaId).single();
+    await sb.from('candidaturas').update({ etapa: novaEtapa, updated_at: new Date().toISOString() }).eq('id', candidaturaId);
+    await sb.from('historico_etapas').insert([{ candidatura_id: candidaturaId, etapa_anterior: c?.etapa, etapa_nova: novaEtapa }]);
+    toast('Movido para: ' + novaLabel, 'success');
+    await openCandidatoModal(candidaturaId);
+    if (S.view === 'candidatos' && S.vaga) loadCandidatos(S.vaga.id);
+}
+
+// ================================================================
+// NOTAS
+// ================================================================
+async function salvarNota(candidaturaId) {
+    const el = document.getElementById('nota-input-' + candidaturaId);
+    const texto = el?.value?.trim();
+    if (!texto) return;
+    await sb.from('notas_candidatura').insert([{ candidatura_id: candidaturaId, conteudo: texto }]);
+    toast('Nota salva!', 'success');
+    await openCandidatoModal(candidaturaId);
+}
+
+// ================================================================
+// SETUP MODAL (Claude API Key)
+// ================================================================
+function openSetupModal() {
+    const cur = getClaudeKey();
+    showModal(`
+        <div class="modal-header">
+            <div>
+                <div style="font-family:'Montserrat',sans-serif;font-weight:700">Configurar API Claude</div>
+                <div style="font-size:.82rem;color:var(--muted);margin-top:3px">Necessário para análise automática de currículos</div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Chave da API Anthropic (Claude)</label>
+                <input type="password" id="claude-key" value="${cur||''}" placeholder="sk-ant-api03-...">
+            </div>
+            <p style="font-size:.76rem;color:var(--muted);line-height:1.55">
+                A chave é salva apenas no seu navegador (localStorage) e não é enviada para nenhum servidor além da Anthropic.<br>
+                Obtenha a sua em <strong>console.anthropic.com → API Keys</strong>.
+            </p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="saveKey()">Salvar chave</button>
+            ${cur ? `<button class="btn btn-danger" onclick="clearKey()">Remover</button>` : ''}
+            <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+        </div>`);
+}
+
+function getClaudeKey()  { return localStorage.getItem('ecgnow_claude'); }
+function saveKey()  {
+    const k = document.getElementById('claude-key').value.trim();
+    if (!k) { alert('Insira uma chave válida.'); return; }
+    localStorage.setItem('ecgnow_claude', k);
+    closeModal(); toast('Chave salva!', 'success'); render();
+}
+function clearKey() {
+    localStorage.removeItem('ecgnow_claude');
+    closeModal(); toast('Chave removida.', 'success'); render();
+}
+
+// ================================================================
+// MODAL HELPERS
+// ================================================================
+// NOVA VAGA
+// ================================================================
+async function openNovaVagaModal() {
+    S.vagaCargo = null;
+    const SETORES = ['Comercial','Financeiro','Gente & Cultura','Marketing','Operação - ECG','Operação - Holter','Operação - MAPA','Operação - Teste Ergométrico','Sucesso do Cliente','Tecnologia da Informação'];
+    showModal(`
+        <div class="modal-header">
+            <div>
+                <div style="font-family:'Montserrat',sans-serif;font-weight:700">Nova Vaga</div>
+                <div style="font-size:.82rem;color:var(--muted);margin-top:3px">Preencha os dados da vaga</div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Cargo vinculado <span style="font-weight:400;color:var(--muted)">(puxa competências para o agente)</span></label>
+                <select id="v-cargo" onchange="selecionarCargo(this.value)">
+                    <option value="">Carregando cargos...</option>
+                </select>
+                <div id="v-cargo-info" style="font-size:.76rem;color:var(--muted);margin-top:4px"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Título da vaga *</label>
+                    <input type="text" id="v-titulo" placeholder="Ex: Executivo de Contas">
+                </div>
+                <div class="form-group">
+                    <label>Setor *</label>
+                    <select id="v-setor">
+                        <option value="">Selecione o setor</option>
+                        ${SETORES.map(s => `<option value="${s}">${s}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Modalidade</label>
+                    <select id="v-modalidade">
+                        <option value="">Selecione</option>
+                        <option>Presencial</option>
+                        <option>Híbrido</option>
+                        <option>Remoto</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tipo de contrato</label>
+                    <select id="v-contrato">
+                        <option value="">Selecione</option>
+                        <option>CLT</option>
+                        <option>PJ</option>
+                        <option>Ambos</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Localização</label>
+                <input type="text" id="v-local" placeholder="Ex: São Paulo, SP">
+            </div>
+            <div class="form-group">
+                <label>Descrição curta <span style="font-weight:400;color:var(--muted)">(aparece no card do site)</span></label>
+                <textarea id="v-desc-curta" rows="2" placeholder="Breve descrição da vaga para o site de carreiras..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Descrição completa <span style="font-weight:400;color:var(--muted)">(complemento — se cargo vinculado, as competências já são usadas automaticamente)</span></label>
+                <textarea id="v-desc-completa" rows="4" placeholder="Informações adicionais: faixa salarial, benefícios, diferenciais específicos desta vaga..."></textarea>
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                    <input type="checkbox" id="v-ativa" checked style="width:16px;height:16px">
+                    Publicar no site imediatamente
+                </label>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="salvarNovaVaga()">Salvar vaga</button>
+            <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+        </div>`);
+
+    // Carrega cargos do Firebase em segundo plano
+    carregarCargosFirebase().then(cargos => {
+        const sel = document.getElementById('v-cargo');
+        if (!sel) return;
+        sel.innerHTML = `<option value="">— Nenhum (preencher manualmente) —</option>`
+            + cargos.map(c => `<option value="${c.id}">${c.titulo}</option>`).join('');
+    }).catch(() => {
+        const sel = document.getElementById('v-cargo');
+        if (sel) sel.innerHTML = '<option value="">Erro ao carregar cargos</option>';
+    });
+}
+
+function selecionarCargo(cargoId) {
+    const info = document.getElementById('v-cargo-info');
+    if (!cargoId) {
+        S.vagaCargo = null;
+        if (info) info.textContent = '';
+        return;
+    }
+    S.vagaCargo = S.cargosFirebase.find(c => c.id === cargoId) || null;
+    if (!S.vagaCargo) { if (info) info.textContent = ''; return; }
+    const c = S.vagaCargo;
+    const qtdComp = (c.comp_tecnicas?.length || 0) + (c.comp_comportamentais?.length || 0) + (c.comp_organizacionais?.length || 0);
+    if (info) info.textContent = `✓ ${qtdComp} competências encontradas — o agente usará automaticamente na análise dos currículos.`;
+    // Auto-preenche o título se estiver vazio
+    const tituloInput = document.getElementById('v-titulo');
+    if (tituloInput && !tituloInput.value.trim()) tituloInput.value = c.titulo;
+}
+
+async function salvarNovaVaga() {
+    const titulo = document.getElementById('v-titulo').value.trim();
+    const setor  = document.getElementById('v-setor').value;
+    if (!titulo || !setor) { toast('Título e setor são obrigatórios.', 'error'); return; }
+
+    const cargoSel = document.getElementById('v-cargo');
+    const cargoId = cargoSel?.value || null;
+    const cargoTitulo = S.vagaCargo?.titulo || null;
+
+    const { error } = await sb.from('vagas').insert([{
+        titulo,
+        setor,
+        modalidade:         document.getElementById('v-modalidade').value || null,
+        tipo_contrato:      document.getElementById('v-contrato').value || null,
+        localizacao:        document.getElementById('v-local').value.trim() || null,
+        descricao_curta:    document.getElementById('v-desc-curta').value.trim() || null,
+        descricao_completa: document.getElementById('v-desc-completa').value.trim() || null,
+        ativa:              document.getElementById('v-ativa').checked,
+        cargo_id:           cargoId || null,
+        cargo_titulo:       cargoTitulo || null,
+    }]);
+
+    if (error) { toast('Erro: ' + error.message, 'error'); return; }
+    closeModal();
+    toast('Vaga criada com sucesso!', 'success');
+    renderVagas();
+}
+
+// ================================================================
+// RELATÓRIO DISC
+// ================================================================
+async function gerarRelatorioDisc(bancoId) {
+    const key = getClaudeKey();
+    if (!key) { openKeyModal(); return; }
+
+    const { data: c } = await sb.from('banco_talentos').select('*').eq('id', bancoId).single();
+    if (!c) return;
+
+    const total = c.disc_e + c.disc_c + c.disc_p + c.disc_a;
+    const pct = v => ((v / total) * 100).toFixed(1);
+    const nivel = v => v / total >= 0.26 ? 'ALTO' : 'BAIXO';
+
+    showModal(`
+        <div class="modal-header">
+            <div>
+                <div style="font-family:'Montserrat',sans-serif;font-weight:700">Relatório Comportamental</div>
+                <div style="font-size:.82rem;color:var(--muted);margin-top:3px">${c.nome}</div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body" id="disc-report-body">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+                ${[['Executor','disc_e','#dc2626'],['Comunicador','disc_c','#d97706'],['Planejador','disc_p','#16a34a'],['Analista','disc_a','#2563eb']].map(([nome,key,cor]) => `
+                <div style="text-align:center;padding:16px 8px;background:#f9fafb;border-radius:10px;border:2px solid ${c.disc_perfil?.includes(nome) ? cor : '#e5e7eb'}">
+                    <div style="font-size:1.4rem;font-weight:800;color:${cor}">${pct(c[key])}%</div>
+                    <div style="font-size:.8rem;font-weight:700;color:#374151;margin-top:2px">${nome}</div>
+                    <div style="font-size:.72rem;color:${c[key]/total>=0.26?cor:'#9ca3af'};font-weight:600">${nivel(c[key])}</div>
+                </div>`).join('')}
+            </div>
+            <div style="text-align:center;margin-bottom:20px">
+                <div style="font-size:.8rem;color:var(--muted)">Perfil predominante</div>
+                <div style="font-family:'Montserrat',sans-serif;font-size:1.5rem;font-weight:800;color:var(--text)">${c.disc_perfil}</div>
+            </div>
+            <div id="disc-analise-area" style="background:#f9fafb;border-radius:10px;padding:20px;min-height:80px;display:flex;align-items:center;justify-content:center;color:var(--muted)">
+                Clique em "Gerar análise" para o Claude criar o relatório comportamental completo.
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-primary btn-sm" onclick="chamarClaudeDisc('${bancoId}')">✨ Gerar análise</button>
+            <button class="btn btn-outline" onclick="closeModal()">Fechar</button>
+        </div>`);
+}
+
+async function chamarClaudeDisc(bancoId) {
+    const key = getClaudeKey();
+    const { data: c } = await sb.from('banco_talentos').select('*').eq('id', bancoId).single();
+    if (!c) return;
+
+    const area = document.getElementById('disc-analise-area');
+    area.innerHTML = `<div class="loading">Gerando relatório...</div>`;
+
+    const total = c.disc_e + c.disc_c + c.disc_p + c.disc_a;
+    const pct = v => ((v / total) * 100).toFixed(1);
+
+    const scoresB = [
+        { dim: 'Executor (D)', val: c.disc_e||0, pct: pct(c.disc_e||0) },
+        { dim: 'Comunicador (I)', val: c.disc_c||0, pct: pct(c.disc_c||0) },
+        { dim: 'Planejador (S)', val: c.disc_p||0, pct: pct(c.disc_p||0) },
+        { dim: 'Analista (C)', val: c.disc_a||0, pct: pct(c.disc_a||0) },
+    ].sort((a, b) => b.val - a.val);
+
+    const prompt = `Você é um especialista em comportamento humano e avaliação DISC com base no conhecimento científico e aplicado sobre os 4 fatores comportamentais.
+
+Gere um relatório comportamental DISC personalizado e analítico para o candidato abaixo. O relatório deve refletir fielmente a combinação ESPECÍFICA dos percentuais — não use descrições genéricas. Analise as proporções entre as dimensões e como isso se manifesta de forma única nessa pessoa.
+
+CANDIDATO: ${c.nome}
+ÁREA DE INTERESSE: ${c.area_interesse || 'Não informada'}
+PERFIL DOMINANTE: ${c.disc_perfil}
+PONTUAÇÃO DETALHADA (ordenada por intensidade):
+${scoresB.map(s => `- ${s.dim}: ${s.val} pontos (${s.pct}%)`).join('\n')}
+
+INSTRUÇÕES:
+- Analise as proporções específicas e o que as dimensões baixas revelam.
+- NÃO use linguagem de template. Seja analítico e específico para ESSA combinação.
+- Escreva em terceira pessoa usando o nome ${c.nome}.
+- Formato: HTML simples com <h3>, <p>, <ul>, <li>, <strong>.
+
+Seções:
+1. Leitura do perfil (o que a combinação específica de scores revela)
+2. Como ${c.nome} age sob pressão
+3. Pontos fortes (específicos para essa combinação)
+4. Pontos de atenção
+5. Estilo de trabalho e entrega
+6. Relacionamento e comunicação
+7. Perfis de cargo mais compatíveis com esse comportamento
+8. Recomendações para o RH`;
+
+    try {
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json',
+                'anthropic-dangerous-direct-browser-access': 'true',
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 2000,
+                messages: [{ role: 'user', content: prompt }],
+            }),
+        });
+        const data = await resp.json();
+        const html = data.content?.[0]?.text || 'Erro ao gerar relatório.';
+        area.innerHTML = `<div style="line-height:1.7;font-size:.88rem">${html}</div>`;
+    } catch(err) {
+        area.innerHTML = `<span style="color:red">Erro: ${err.message}</span>`;
+    }
+}
+
+// ================================================================
+// RELATÓRIO DISC — CANDIDATURA
+// ================================================================
+async function gerarRelatorioDiscCandidatura(candidaturaId) {
+    const key = getClaudeKey();
+    if (!key) { openKeyModal(); return; }
+
+    const { data: c } = await sb.from('candidaturas').select('*, vaga:vagas(titulo, setor, cargo_titulo)').eq('id', candidaturaId).single();
+    if (!c?.disc_perfil) return;
+
+    const area = document.getElementById(`disc-relatorio-${candidaturaId}`);
+    if (!area) return;
+    area.innerHTML = `<div class="loading" style="margin-top:12px">Gerando relatório comportamental...</div>`;
+
+    const total = (c.disc_e||0) + (c.disc_c||0) + (c.disc_p||0) + (c.disc_a||0);
+    const pct = v => total ? ((v / total) * 100).toFixed(1) : '0.0';
+
+    // Identifica a dimensão dominante e secundária com precisão
+    const scores = [
+        { dim: 'Executor (D)', val: c.disc_e||0, pct: pct(c.disc_e||0) },
+        { dim: 'Comunicador (I)', val: c.disc_c||0, pct: pct(c.disc_c||0) },
+        { dim: 'Planejador (S)', val: c.disc_p||0, pct: pct(c.disc_p||0) },
+        { dim: 'Analista (C)', val: c.disc_a||0, pct: pct(c.disc_a||0) },
+    ].sort((a, b) => b.val - a.val);
+
+    const contextoVaga = c.vaga
+        ? `A pessoa está se candidatando à vaga de ${c.vaga.titulo}${c.vaga.cargo_titulo ? ` (cargo: ${c.vaga.cargo_titulo})` : ''}, no setor ${c.vaga.setor || ''}.`
+        : '';
+
+    const prompt = `Você é um especialista em comportamento humano e avaliação DISC com base no conhecimento científico e aplicado sobre os 4 fatores comportamentais (Dominância, Influência, Estabilidade e Conformidade).
+
+Gere um relatório comportamental DISC personalizado e analítico para o candidato abaixo. O relatório deve refletir fielmente a combinação ESPECÍFICA dos percentuais informados — não use descrições genéricas de perfil. Analise as proporções entre as dimensões, o que domina, o que é secundário e o que é baixo, e como isso se manifesta de forma única nessa pessoa.
+
+CANDIDATO: ${c.nome}
+PERFIL DOMINANTE: ${c.disc_perfil}
+PONTUAÇÃO DETALHADA (ordenada por intensidade):
+${scores.map(s => `- ${s.dim}: ${s.val} pontos (${s.pct}%)`).join('\n')}
+
+${contextoVaga}
+
+INSTRUÇÕES:
+- Analise as proporções específicas. Ex: se Comunicador e Planejador estão próximos, isso é diferente de um Comunicador isolado com 60%.
+- Considere o que as dimensões BAIXAS revelam tanto quanto as altas.
+- Conecte o perfil ao contexto da vaga quando informado.
+- NÃO use linguagem de template ou descrições copiadas de manuais. Seja analítico e específico.
+- Escreva em terceira pessoa usando o nome ${c.nome}.
+- Formato: HTML simples com <h3>, <p>, <ul>, <li>, <strong>.
+
+Seções do relatório:
+1. Leitura do perfil (análise das proporções reais — o que a combinação específica revela)
+2. Como ${c.nome} age sob pressão (comportamento quando está fora da zona de conforto)
+3. Pontos fortes (específicos para ESSA combinação de scores)
+4. Pontos de atenção (riscos reais baseados nas dimensões dominantes e baixas)
+5. Estilo de trabalho e entrega (ritmo, organização, relação com prazos e autonomia)
+6. Relacionamento e comunicação (como interage com diferentes perfis)
+7. Aderência ao cargo${contextoVaga ? ' (analise a compatibilidade com a vaga informada)' : ' (perfis de cargo mais compatíveis com esse comportamento)'}
+8. Recomendações para o RH (como conduzir a entrevista e o onboarding com esse perfil)`;
+
+    try {
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json',
+                'anthropic-dangerous-direct-browser-access': 'true',
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 2000,
+                messages: [{ role: 'user', content: prompt }],
+            }),
+        });
+        const data = await resp.json();
+        const html = data.content?.[0]?.text || 'Erro ao gerar relatório.';
+        area.innerHTML = `<div style="line-height:1.7;font-size:.88rem;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">${html}</div>`;
+    } catch(err) {
+        area.innerHTML = `<span style="color:red">Erro: ${err.message}</span>`;
+    }
+}
+
+// ================================================================
+function showModal(html) {
+    document.getElementById('modal-content').innerHTML = html;
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+    document.getElementById('modal-overlay').classList.add('hidden');
+    document.body.style.overflow = '';
+    clearInterval(window._dotInterval);
+}
+function handleOverlayClick(e) {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+// ================================================================
+// HELPERS
+// ================================================================
+function classifBadge(c) {
+    const m = { 'Altamente compatível':'bg-green', 'Compatível':'bg-blue', 'Potencial':'bg-amber', 'Pouco compatível':'bg-gray' };
+    return `<span class="badge ${m[c]||'bg-gray'}">${c}</span>`;
+}
+function etapaBadge(e) {
+    const m = { triagem:['bg-gray','Triagem'], analise_rh:['bg-blue','Análise RH'], entrevista_rh:['bg-purple','Entrevista RH'], teste_pratico:['bg-orange','Teste Prático'], entrevista_gestor:['bg-cyan','C/ Gestor'], visao_geral:['bg-yellow','Visão Geral'], aprovado:['bg-green','✓ Aprovado'], reprovado:['bg-gray','Não avançou'] };
+    const [cls,l] = m[e] || ['bg-gray',e];
+    return `<span class="badge ${cls}">${l}</span>`;
+}
+function fmtDate(iso)     { return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—'; }
+function fmtDateTime(iso) { return iso ? new Date(iso).toLocaleString('pt-BR') : '—'; }
+function toast(msg, type='') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = type; t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 3200);
+}
+</script>
+</body>
+</html>
