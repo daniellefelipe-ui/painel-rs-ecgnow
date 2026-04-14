@@ -2482,12 +2482,13 @@ async function ecgCorrigirSelecionados() {
             for (let q = 1; q <= 30; q++) {
                 const gabComp = ECG_GABARITO[q];
                 const bonus = ECG_BONUS_QUESTOES.includes(q);
-                let nota, alerta = null;
+                let nota, alerta = null, presentes = [];
                 if (bonus) {
                     nota = 1;
+                    presentes = [true];
                 } else {
                     const resQ = resultado.resultados?.find(r => r.q === q);
-                    const presentes = resQ?.presentes || gabComp.map(() => false);
+                    presentes = resQ?.presentes || gabComp.map(() => false);
                     const acertos = presentes.filter(Boolean).length;
                     nota = parseFloat((acertos / gabComp.length).toFixed(4));
                     alerta = resQ?.alerta || null;
@@ -2497,7 +2498,7 @@ async function ecgCorrigirSelecionados() {
                 questoes.push({
                     q,
                     gabarito: bonus ? ['questão de especialista (bonus)'] : gabComp,
-                    presentes: bonus ? [true] : presentes,
+                    presentes,
                     resposta: candidato['q' + q] || '(em branco)',
                     nota_pct: Math.round(nota * 100),
                     alerta,
