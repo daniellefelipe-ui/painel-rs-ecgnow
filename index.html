@@ -655,10 +655,13 @@ async function loadCandidatos(vagaId) {
         const colsHtml = KCOLS.map(({ k, l }) => {
             const cards = rows.filter(r => r.etapa === k).map(r => {
                 const a = r.analises_cv;
+                const ecg = r.teste_ecg;
+                const ecgBadge = ecg ? `<div style="margin-top:5px;display:inline-flex;align-items:center;gap:4px;background:${ecg.aprovado ? '#dcfce7' : '#fee2e2'};color:${ecg.aprovado ? '#15803d' : '#dc2626'};border-radius:4px;padding:2px 7px;font-size:.7rem;font-weight:700">🫀 ${ecg.total_pct}%</div>` : '';
                 return `<div class="kanban-card" onclick="openCandidatoModal('${r.id}')">
                     <div class="kanban-card-name">${r.nome}</div>
                     <div class="kanban-card-sub">${r.localizacao || r.email || ''}</div>
                     ${a?.classificacao ? `<div style="margin-top:5px">${classifBadge(a.classificacao)}</div>` : ''}
+                    ${ecgBadge}
                 </div>`;
             }).join('') || '<div style="color:var(--muted);font-size:.75rem;padding:6px 4px;text-align:center">—</div>';
             const count = rows.filter(r => r.etapa === k).length;
@@ -673,10 +676,12 @@ async function loadCandidatos(vagaId) {
         <div class="table-wrap">
             <table>
                 <thead><tr>
-                    <th>Candidato</th><th>Classificação</th><th>Etapa</th><th>Adicionado</th><th></th>
+                    <th>Candidato</th><th>Classificação</th><th>Etapa</th>${isEcgVaga(S.vaga) ? '<th>ECG</th>' : ''}<th>Adicionado</th><th></th>
                 </tr></thead>
                 <tbody>${rows.map(r => {
                     const a = r.analises_cv;
+                    const ecg = r.teste_ecg;
+                    const ecgCell = isEcgVaga(S.vaga) ? `<td>${ecg ? `<span style="display:inline-flex;align-items:center;gap:4px;background:${ecg.aprovado ? '#dcfce7' : '#fee2e2'};color:${ecg.aprovado ? '#15803d' : '#dc2626'};border-radius:4px;padding:2px 8px;font-size:.75rem;font-weight:700">🫀 ${ecg.total_pct}%</span>` : '<span style="color:var(--muted);font-size:.75rem">—</span>'}</td>` : '';
                     return `<tr onclick="openCandidatoModal('${r.id}')">
                         <td>
                             <div class="td-name">${r.nome}</div>
@@ -684,6 +689,7 @@ async function loadCandidatos(vagaId) {
                         </td>
                         <td>${a?.classificacao ? classifBadge(a.classificacao) : `<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();startAnalysis('${r.id}')">Analisar CV</button>`}</td>
                         <td>${etapaBadge(r.etapa)}</td>
+                        ${ecgCell}
                         <td style="color:var(--muted);font-size:.78rem">${fmtDate(r.created_at)}</td>
                         <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openCandidatoModal('${r.id}')">Ver →</button></td>
                     </tr>`;
@@ -882,6 +888,15 @@ async function openCandidatoModal(id) {
             ${!isEnd ? `<button class="btn btn-danger" onclick="moverEtapa('${id}','reprovado','Não avançou')">Não avançar</button>` : ''}
             ${c.etapa === 'reprovado' ? `<button class="btn btn-outline" onclick="moverEtapa('${id}','triagem','Triagem')">↩ Retornar à triagem</button>` : ''}
         </div>`;
+
+    // Inicializa estado de edição do Dr. Marco
+    if (c.teste_ecg?.questoes?.length) {
+        window._ecgEdicao = window._ecgEdicao || {};
+        window._ecgEdicao[id] = {
+            questoes: JSON.parse(JSON.stringify(c.teste_ecg.questoes)),
+            modificado: false,
+        };
+    }
 }
 
 function renderAnalise(a) {
@@ -2083,62 +2098,126 @@ function renderEcgResultado(testeEcg, candidaturaId) {
     const aprovado = testeEcg.aprovado ?? pct >= 75;
     const cor = aprovado ? '#16a34a' : '#dc2626';
     const comentario = testeEcg.comentario || '';
-    const alertas = (testeEcg.questoes || []).filter(q => q.alerta);
     const questoes = testeEcg.questoes || [];
+    const alertas = questoes.filter(q => q.alerta);
+    const editadoMarco = testeEcg.editado_marco;
 
-    const alertasHtml = alertas.length ? `
-        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 14px;margin-bottom:12px">
-            <div style="font-size:.78rem;font-weight:700;color:#c2410c;margin-bottom:8px">⚠️ ${alertas.length} alerta${alertas.length > 1 ? 's' : ''} de discrepância</div>
-            ${alertas.map(a => `
-                <div style="display:flex;gap:8px;margin-bottom:6px;font-size:.8rem">
-                    <span style="font-weight:700;color:#c2410c;white-space:nowrap">Q${a.q} · ${a.nota_pct}%</span>
-                    <span style="color:#7c2d12">${a.alerta}</span>
-                </div>`).join('')}
-        </div>` : '';
-
-    const questoesHtml = questoes.length ? `
-        <details style="margin-bottom:12px">
-            <summary style="cursor:pointer;font-size:.8rem;font-weight:600;color:var(--navy);padding:8px 0;list-style:none;display:flex;align-items:center;gap:6px">
-                <span>▶</span> Ver gabarito × respostas (${questoes.length} questões)
-            </summary>
-            <div style="margin-top:8px;max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
-                ${questoes.map(q => {
-                    const bg = q.nota_pct >= 100 ? '#f0fdf4' : q.nota_pct > 0 ? '#fefce8' : q.alerta ? '#fef2f2' : '#f9fafb';
-                    const borda = q.alerta ? '1px solid #fecaca' : '1px solid var(--border)';
-                    const gabItems = (q.gabarito || []).map(c =>
-                        `<span style="display:inline-block;background:#e0f2fe;color:#0369a1;border-radius:4px;padding:1px 6px;font-size:10px;margin:1px">${c}</span>`
-                    ).join('');
-                    return `<div style="background:${bg};border:${borda};border-radius:8px;padding:10px 12px">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-                            <strong style="font-size:.8rem">Q${q.q}${q.bonus ? ' ⭐' : ''}</strong>
-                            <span style="font-weight:700;font-size:.8rem;color:${q.nota_pct >= 100 ? '#16a34a' : q.nota_pct > 0 ? '#d97706' : '#dc2626'}">${q.nota_pct}%</span>
-                        </div>
-                        <div style="margin-bottom:4px">${gabItems}</div>
-                        <div style="font-size:.78rem;color:var(--text);background:rgba(0,0,0,.04);border-radius:5px;padding:5px 8px"><em>"${q.resposta}"</em></div>
-                        ${q.alerta ? `<div style="font-size:.75rem;color:#c2410c;margin-top:5px;font-weight:500">⚠️ ${q.alerta}</div>` : ''}
-                    </div>`;
-                }).join('')}
-            </div>
-        </details>` : '';
+    const questoesHtml = !questoes.length
+        ? `<div style="font-size:.8rem;color:var(--muted);margin-bottom:12px;padding:10px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:8px">ℹ️ Detalhe por questão não disponível — execute a correção novamente na aba Teste ECG.</div>`
+        : `<div style="max-height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:12px" id="ecg-questoes-${candidaturaId}">
+            ${questoes.map((q, qi) => ecgRenderQuestaoItem(q, qi, candidaturaId)).join('')}
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="ecgSalvarEdicaoMarco('${candidaturaId}',event)" style="margin-bottom:12px">
+            💾 Salvar edições do Dr. Marco
+        </button>`;
 
     return `
         <div style="background:${aprovado ? '#f0fdf4' : '#fef2f2'};border:1px solid ${aprovado ? '#bbf7d0' : '#fecaca'};border-radius:10px;padding:16px;margin-bottom:12px">
             <div style="display:flex;align-items:center;justify-content:space-between">
-                <div>
-                    <span style="font-size:1.5rem;font-weight:800;color:${cor}">${pct}%</span>
-                    <span style="margin-left:8px;font-size:.875rem;font-weight:600;color:${cor}">${aprovado ? '✅ Aprovado' : '❌ Reprovado'}</span>
-                    ${alertas.length ? `<span style="margin-left:10px;font-size:.78rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:20px;padding:2px 8px">⚠️ ${alertas.length} alerta${alertas.length > 1 ? 's' : ''}</span>` : ''}
+                <div style="display:flex;align-items:center;gap:10px">
+                    <span id="ecg-score-live-${candidaturaId}" style="font-size:1.5rem;font-weight:800;color:${cor}">${pct}%</span>
+                    <span style="font-size:.875rem;font-weight:600;color:${cor}">${aprovado ? '✅ Aprovado' : '❌ Reprovado'}</span>
+                    ${alertas.length ? `<span style="font-size:.78rem;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:20px;padding:2px 8px">⚠️ ${alertas.length} alerta${alertas.length > 1 ? 's' : ''}</span>` : ''}
+                    ${editadoMarco ? `<span style="font-size:.72rem;background:#ede9fe;color:#6d28d9;border-radius:20px;padding:2px 8px">✏️ Editado Dr. Marco</span>` : ''}
                 </div>
                 <span style="font-size:.75rem;color:var(--muted)">Corrigido em ${testeEcg.corrigido_em ? new Date(testeEcg.corrigido_em).toLocaleDateString('pt-BR') : '—'}</span>
             </div>
         </div>
-        ${alertasHtml}
         ${questoesHtml}
         <div style="margin-bottom:12px">
             <label style="font-size:.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:5px">Comentário (Dr. Marco)</label>
             <textarea id="ecg-comentario-${candidaturaId}" rows="2" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:.875rem;font-family:'Inter',sans-serif;resize:vertical" placeholder="Adicionar observação sobre o desempenho...">${comentario}</textarea>
         </div>
         <button class="btn btn-outline btn-sm" onclick="ecgSalvarComentario('${candidaturaId}')">Salvar comentário</button>`;
+}
+
+function ecgRenderQuestaoItem(q, qi, cid) {
+    const bg = q.nota_pct >= 100 ? '#f0fdf4' : q.nota_pct > 0 ? '#fefce8' : q.alerta ? '#fef2f2' : '#f9fafb';
+    const borda = q.alerta ? '2px solid #fca5a5' : '1px solid var(--border)';
+    const gab = q.gabarito || [];
+    const compHtml = gab.map((comp, ci) => {
+        const p = q.presentes ? q.presentes[ci] : null;
+        const cbg  = p === true ? '#dcfce7' : p === false ? '#fee2e2' : '#f1f5f9';
+        const ccol = p === true ? '#15803d' : p === false ? '#9f1239' : '#64748b';
+        const cborder = p === true ? '#86efac' : p === false ? '#fca5a5' : '#cbd5e1';
+        const icon = p === true ? '✓' : p === false ? '✗' : '·';
+        return `<button onclick="ecgToggleComp('${cid}',${qi},${ci})" title="Clique para alternar" style="background:${cbg};color:${ccol};border:1px solid ${cborder};border-radius:4px;padding:2px 8px;font-size:10px;margin:1px 2px 2px 0;cursor:pointer;font-weight:600;font-family:inherit;transition:all .15s">${icon} ${comp}</button>`;
+    }).join('');
+    const alertaVal = (q.alerta || '').replace(/"/g, '&quot;');
+    const notaCor = q.nota_pct >= 100 ? '#16a34a' : q.nota_pct > 0 ? '#d97706' : '#dc2626';
+    return `<div id="ecg-q-${cid}-${qi}" style="background:${bg};border:${borda};border-radius:8px;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+            <strong style="font-size:.8rem">Q${q.q}${q.bonus ? ' ⭐' : ''}</strong>
+            <span id="ecg-nota-${cid}-${qi}" style="font-weight:700;font-size:.8rem;color:${notaCor}">${q.nota_pct}%</span>
+        </div>
+        <div style="margin-bottom:6px;line-height:2">${compHtml}</div>
+        <div style="font-size:.78rem;color:var(--text);background:rgba(0,0,0,.04);border-radius:5px;padding:5px 8px;margin-bottom:6px"><em>"${q.resposta}"</em></div>
+        <input type="text" value="${alertaVal}" placeholder="⚠️ Alerta (deixe vazio se não houver)"
+            oninput="ecgEditarAlerta('${cid}',${qi},this.value)"
+            style="width:100%;padding:4px 8px;border:1px solid ${q.alerta ? '#fca5a5' : 'var(--border)'};border-radius:5px;font-size:.75rem;font-family:inherit;color:${q.alerta ? '#c2410c' : 'var(--text)'}">
+    </div>`;
+}
+
+function ecgToggleComp(cid, qi, ci) {
+    const ed = (window._ecgEdicao || {})[cid];
+    if (!ed) return;
+    const q = ed.questoes[qi];
+    if (!q) return;
+    if (!q.presentes) q.presentes = (q.gabarito || []).map(() => false);
+    q.presentes[ci] = !q.presentes[ci];
+    if (!q.bonus && q.gabarito?.length) {
+        q.nota_pct = Math.round((q.presentes.filter(Boolean).length / q.gabarito.length) * 100);
+    }
+    ed.modificado = true;
+    const card = document.getElementById(`ecg-q-${cid}-${qi}`);
+    if (card) card.outerHTML = ecgRenderQuestaoItem(q, qi, cid);
+    ecgAtualizarScoreTotal(cid);
+}
+
+function ecgEditarAlerta(cid, qi, valor) {
+    const ed = (window._ecgEdicao || {})[cid];
+    if (!ed) return;
+    ed.questoes[qi].alerta = valor.trim() || null;
+    ed.modificado = true;
+}
+
+function ecgAtualizarScoreTotal(cid) {
+    const ed = (window._ecgEdicao || {})[cid];
+    if (!ed || !ed.questoes.length) return;
+    const soma = ed.questoes.reduce((s, q) => s + (q.nota_pct || 0), 0);
+    const pct = Math.round(soma / ed.questoes.length);
+    const el = document.getElementById(`ecg-score-live-${cid}`);
+    if (el) { el.textContent = pct + '%'; el.style.color = pct >= 75 ? '#16a34a' : '#dc2626'; }
+}
+
+async function ecgSalvarEdicaoMarco(cid, evt) {
+    const ed = (window._ecgEdicao || {})[cid];
+    if (!ed) return;
+    const btn = evt?.target;
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+    const { data: c } = await sb.from('candidaturas').select('teste_ecg').eq('id', cid).single();
+    if (!c?.teste_ecg) { toast('Erro: dados não encontrados', 'error'); if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar edições do Dr. Marco'; } return; }
+    const soma = ed.questoes.reduce((s, q) => s + (q.nota_pct || 0), 0);
+    const totalPct = Math.round(soma / ed.questoes.length);
+    const atualizado = {
+        ...c.teste_ecg,
+        questoes: ed.questoes,
+        notas: ed.questoes.map(q => q.nota_pct / 100),
+        total_pct: totalPct,
+        aprovado: totalPct >= 75,
+        alertas_count: ed.questoes.filter(q => q.alerta).length,
+        editado_marco: true,
+        editado_em: new Date().toISOString(),
+    };
+    const { error } = await sb.from('candidaturas').update({ teste_ecg: atualizado }).eq('id', cid);
+    if (error) { toast('Erro ao salvar: ' + error.message, 'error'); if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar edições do Dr. Marco'; } return; }
+    toast('Edições do Dr. Marco salvas! ✅');
+    ed.modificado = false;
+    // Atualiza badge no topo do modal
+    const scoreEl = document.getElementById(`ecg-score-live-${cid}`);
+    if (scoreEl) { scoreEl.textContent = totalPct + '%'; scoreEl.style.color = totalPct >= 75 ? '#16a34a' : '#dc2626'; }
+    if (btn) { btn.textContent = '✅ Salvo'; btn.style.background = '#16a34a'; setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar edições do Dr. Marco'; btn.style.background = ''; } }, 2500); }
+    if (S.vaga) loadCandidatos(S.vaga.id); // atualiza badge no Kanban
 }
 
 async function ecgSalvarComentario(candidaturaId) {
@@ -2194,7 +2273,7 @@ const ECG_BONUS_QUESTOES = [16]; // Questões onde todos ganham nota máxima aut
 let ecgRespostas = [];
 let ecgResultados = [];
 
-function renderEcgView() {
+async function renderEcgView() {
     const el = document.getElementById('c-content');
     if (!el) return;
     ecgRespostas = [];
@@ -2211,9 +2290,45 @@ function renderEcgView() {
                 </button>
                 <span style="font-size:.8rem;color:var(--muted)">Planilha com colunas: nome, q1, q2 ... q30</span>
             </div>
-            <div id="ecgStatus" style="font-size:.875rem;color:var(--muted);margin-bottom:12px"></div>
+            <div id="ecgStatus" style="font-size:.875rem;color:var(--muted);margin-bottom:12px">Carregando resultados salvos...</div>
             <div id="ecgResultWrap"></div>
         </div>`;
+
+    if (!S.vaga?.id) return;
+
+    const { data: candidaturas } = await sb.from('candidaturas')
+        .select('id, nome, teste_ecg')
+        .eq('vaga_id', S.vaga.id)
+        .not('teste_ecg', 'is', null)
+        .order('nome');
+
+    const statusEl = document.getElementById('ecgStatus');
+
+    if (!candidaturas?.length) {
+        if (statusEl) statusEl.textContent = 'Nenhum resultado salvo. Importe uma planilha para corrigir.';
+        return;
+    }
+
+    // Reconstrói ecgResultados a partir dos dados salvos no Supabase
+    ecgResultados = candidaturas.map(c => ({
+        nome: c.nome,
+        notas: c.teste_ecg.notas || [],
+        questoes: c.teste_ecg.questoes || [],
+        total: Math.round(((c.teste_ecg.total_pct * 30) / 100) * 100) / 100,
+    }));
+
+    const ultima = candidaturas.reduce((acc, c) => {
+        const d = c.teste_ecg.corrigido_em;
+        return d > acc ? d : acc;
+    }, '');
+    const dataFmt = ultima ? new Date(ultima).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+    if (statusEl) statusEl.textContent = `${ecgResultados.length} candidato(s) com resultado salvo${dataFmt ? ' · última correção em ' + dataFmt : ''}`;
+
+    const exportBtn = document.getElementById('ecgBtnExportar');
+    if (exportBtn) exportBtn.style.display = '';
+
+    ecgRenderTabela();
 }
 
 function ecgImportarExcel(input) {
@@ -2275,14 +2390,25 @@ function ecgSelecionarTodos(val) {
     ecgRespostas.forEach((_, i) => { const c = document.getElementById('ecgChk_' + i); if (c) c.checked = val; });
 }
 
-async function ecgCorrigirCandidato(candidato) {
+async function ecgCorrigirCandidato(candidato, exemplosMarco = []) {
     const perguntas = Object.entries(ECG_GABARITO)
         .filter(([q]) => !ECG_BONUS_QUESTOES.includes(Number(q)))
         .map(([q, comps]) =>
             `Q${q} (${comps.length} componente${comps.length > 1 ? 's' : ''}):\n  Gabarito: ${comps.join(' | ')}\n  Resposta: "${candidato['q' + q] || '(em branco)'}"`
         ).join('\n\n');
 
+    const exemplosHtml = exemplosMarco.length
+        ? '\nCORREÇÕES DO DR. MARCO (use como referência de critério):\n' +
+          exemplosMarco.map(ex =>
+              '  Q' + ex.q + ' | Gabarito: ' + (ex.gabarito||[]).join(' | ') +
+              ' | Resposta: "' + ex.resposta + '" | Presentes: [' +
+              (ex.presentes||[]).map(p => p ? 'sim' : 'nao').join(', ') + ']' +
+              (ex.alerta ? ' | Alerta: "' + ex.alerta + '"' : '')
+          ).join('\n') + '\n'
+        : '';
+
     const prompt = `Você é um avaliador especialista em eletrocardiografia médica. Avalie as respostas do candidato e identifique erros clinicamente relevantes.
+${exemplosHtml}
 
 REGRAS DE PONTUAÇÃO:
 - Aceite sinônimos e abreviações médicas (RS=ritmo sinusal, BRD=bloqueio de ramo direito, FA=fibrilação atrial, SAE=sobrecarga atrial esquerda, SVE=sobrecarga ventricular esquerda, BAVT=bloqueio atrioventricular total, TV=taquicardia ventricular, MP=marcapasso, BRE=bloqueio de ramo esquerdo, BDASE=bloqueio divisional anterossuperior esquerdo, ZEI=zona/área elétrica inativa, TPSV=taquicardia supraventricular, TRN=taquicardia por reentrada nodal, WPW=wolf-parkinson-white, etc.)
@@ -2306,7 +2432,7 @@ Responda APENAS com JSON válido:
     const resp = await fetch('https://ecg-proxy-18dw.vercel.app/api/corrigir', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, messages: [{ role: 'user', content: prompt }] }),
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 2048, temperature: 0, messages: [{ role: 'user', content: prompt }] }),
     });
     if (!resp.ok) { const err = await resp.json().catch(() => ({})); throw new Error(err.error?.message || `HTTP ${resp.status}`); }
     const data = await resp.json();
@@ -2327,11 +2453,31 @@ async function ecgCorrigirSelecionados() {
 
     const statusEl = document.getElementById('ecgStatus');
 
+    // Busca correções do Dr. Marco para usar como exemplos (aprendizado)
+    let exemplosMarco = [];
+    if (S.vaga?.id) {
+        const { data: corrigidos } = await sb.from('candidaturas')
+            .select('teste_ecg')
+            .eq('vaga_id', S.vaga.id)
+            .not('teste_ecg', 'is', null);
+        if (corrigidos?.length) {
+            corrigidos.forEach(c => {
+                if (c.teste_ecg?.editado_marco && c.teste_ecg?.questoes?.length) {
+                    c.teste_ecg.questoes.forEach(q => {
+                        if (q.presentes && (q.alerta || q.nota_pct < 100)) exemplosMarco.push(q);
+                    });
+                }
+            });
+            exemplosMarco = exemplosMarco.slice(0, 10); // máx 10 exemplos
+        }
+    }
+    if (exemplosMarco.length && statusEl) statusEl.textContent = `📚 ${exemplosMarco.length} correção(ões) do Dr. Marco carregadas como referência...`;
+
     for (let i = 0; i < selecionados.length; i++) {
         const candidato = selecionados[i];
         if (statusEl) statusEl.textContent = `⏳ Corrigindo ${i + 1}/${selecionados.length}: ${candidato.nome}...`;
         try {
-            const resultado = await ecgCorrigirCandidato(candidato);
+            const resultado = await ecgCorrigirCandidato(candidato, exemplosMarco);
             const notas = []; const questoes = []; let totalPontos = 0;
             for (let q = 1; q <= 30; q++) {
                 const gabComp = ECG_GABARITO[q];
@@ -2351,6 +2497,7 @@ async function ecgCorrigirSelecionados() {
                 questoes.push({
                     q,
                     gabarito: bonus ? ['questão de especialista (bonus)'] : gabComp,
+                    presentes: bonus ? [true] : presentes,
                     resposta: candidato['q' + q] || '(em branco)',
                     nota_pct: Math.round(nota * 100),
                     alerta,
