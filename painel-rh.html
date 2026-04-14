@@ -561,21 +561,25 @@ async function renderVagas() {
         const modCls = v.modalidade === 'Remoto' ? 'bg-green' : v.modalidade === 'Híbrido' ? 'bg-blue' : 'bg-navy';
         const vagaJson = JSON.stringify(v).replace(/"/g, '&quot;');
         return `
-        <div class="vaga-card" onclick="navigate('candidatos', { vaga: ${vagaJson} })">
-            <div class="vc-head">
+        <div class="vaga-card">
+            <div class="vc-head" onclick="navigate('candidatos', { vaga: ${vagaJson} })" style="cursor:pointer">
                 <div>
                     <div class="vc-title">${v.titulo || 'Sem título'}</div>
                     <div class="vc-setor">${v.setor || ''}</div>
                 </div>
                 <span class="badge ${v.ativa !== false ? 'bg-green' : 'bg-gray'}">${v.ativa !== false ? 'Aberta' : 'Encerrada'}</span>
             </div>
-            <div class="vc-meta">
+            <div class="vc-meta" onclick="navigate('candidatos', { vaga: ${vagaJson} })" style="cursor:pointer">
                 ${v.modalidade ? `<span class="badge ${modCls}">${v.modalidade}</span>` : ''}
                 ${v.localizacao ? `<span class="badge bg-gray">${v.localizacao}</span>` : ''}
             </div>
+            ${v.lider ? `<div style="font-size:.76rem;color:var(--muted);margin-top:8px">👤 ${v.lider}</div>` : ''}
             <div class="vc-footer">
-                <div class="vc-count"><strong>${n}</strong> candidato${n !== 1 ? 's' : ''}</div>
-                <span class="vc-link">Ver candidatos →</span>
+                <div class="vc-count" onclick="navigate('candidatos', { vaga: ${vagaJson} })" style="cursor:pointer"><strong>${n}</strong> candidato${n !== 1 ? 's' : ''}</div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button class="btn btn-outline btn-sm" onclick="openEditarVagaModal(${vagaJson})" style="font-size:.75rem;padding:3px 10px">✏️ Editar</button>
+                    <span class="vc-link" onclick="navigate('candidatos', { vaga: ${vagaJson} })">Ver candidatos →</span>
+                </div>
             </div>
         </div>`;
     }).join('');
@@ -1764,6 +1768,22 @@ async function openNovaVagaModal() {
                     </select>
                 </div>
             </div>
+            <div class="form-group">
+                <label>Líder responsável</label>
+                <select id="v-lider">
+                    <option value="">Selecione o líder</option>
+                    <option>Aline Alves Silveira</option>
+                    <option>Barbara Braga Duarte de Souza</option>
+                    <option>Bruno Franciulli Maia</option>
+                    <option>Danielle Felipe Pereira</option>
+                    <option>Gabriel Cesar Romanini de Paula</option>
+                    <option>Marco Antonio Bustamante de Lima</option>
+                    <option>Mayara Luize Almeida Gomes Silva</option>
+                    <option>Renner Lariucci</option>
+                    <option>Rodrigo Aramis da Silva</option>
+                    <option>Vinicius Pinto dos Santos</option>
+                </select>
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Modalidade</label>
@@ -1849,6 +1869,7 @@ async function salvarNovaVaga() {
     const { error } = await sb.from('vagas').insert([{
         titulo,
         setor,
+        lider:              document.getElementById('v-lider').value || null,
         modalidade:         document.getElementById('v-modalidade').value || null,
         tipo_contrato:      document.getElementById('v-contrato').value || null,
         localizacao:        document.getElementById('v-local').value.trim() || null,
@@ -1862,6 +1883,102 @@ async function salvarNovaVaga() {
     if (error) { toast('Erro: ' + error.message, 'error'); return; }
     closeModal();
     toast('Vaga criada com sucesso!', 'success');
+    renderVagas();
+}
+
+// ================================================================
+// EDITAR VAGA
+// ================================================================
+function openEditarVagaModal(v) {
+    const SETORES = ['Comercial','Financeiro','Gente & Cultura','Marketing','Operação - ECG','Operação - Holter','Operação - MAPA','Operação - Teste Ergométrico','Sucesso do Cliente','Tecnologia da Informação'];
+    const LIDERES = ['Aline Alves Silveira','Barbara Braga Duarte de Souza','Bruno Franciulli Maia','Danielle Felipe Pereira','Gabriel Cesar Romanini de Paula','Marco Antonio Bustamante de Lima','Mayara Luize Almeida Gomes Silva','Renner Lariucci','Rodrigo Aramis da Silva','Vinicius Pinto dos Santos'];
+    showModal(`
+        <div class="modal-header">
+            <div>
+                <div style="font-family:'Montserrat',sans-serif;font-weight:700">Editar Vaga</div>
+                <div style="font-size:.82rem;color:var(--muted);margin-top:3px">${v.titulo || ''}</div>
+            </div>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="ev-id" value="${v.id}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Título da vaga *</label>
+                    <input type="text" id="ev-titulo" value="${v.titulo || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Setor *</label>
+                    <select id="ev-setor">
+                        <option value="">Selecione</option>
+                        ${SETORES.map(s => `<option value="${s}" ${v.setor === s ? 'selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Líder responsável</label>
+                <select id="ev-lider">
+                    <option value="">Selecione o líder</option>
+                    ${LIDERES.map(l => `<option value="${l}" ${v.lider === l ? 'selected' : ''}>${l}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Modalidade</label>
+                    <select id="ev-modalidade">
+                        <option value="">Selecione</option>
+                        ${['Presencial','Híbrido','Remoto'].map(m => `<option ${v.modalidade === m ? 'selected' : ''}>${m}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tipo de contrato</label>
+                    <select id="ev-contrato">
+                        <option value="">Selecione</option>
+                        ${['CLT','PJ','Ambos'].map(c => `<option ${v.tipo_contrato === c ? 'selected' : ''}>${c}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Localização</label>
+                <input type="text" id="ev-local" value="${v.localizacao || ''}">
+            </div>
+            <div class="form-group">
+                <label>Descrição curta</label>
+                <textarea id="ev-desc-curta" rows="2">${v.descricao_curta || ''}</textarea>
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                    <input type="checkbox" id="ev-ativa" ${v.ativa !== false ? 'checked' : ''} style="width:16px;height:16px">
+                    Vaga aberta
+                </label>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="salvarEdicaoVaga()">Salvar alterações</button>
+            <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+        </div>`);
+}
+
+async function salvarEdicaoVaga() {
+    const id     = document.getElementById('ev-id').value;
+    const titulo = document.getElementById('ev-titulo').value.trim();
+    const setor  = document.getElementById('ev-setor').value;
+    if (!titulo || !setor) { toast('Título e setor são obrigatórios.', 'error'); return; }
+
+    const { error } = await sb.from('vagas').update({
+        titulo,
+        setor,
+        lider:           document.getElementById('ev-lider').value || null,
+        modalidade:      document.getElementById('ev-modalidade').value || null,
+        tipo_contrato:   document.getElementById('ev-contrato').value || null,
+        localizacao:     document.getElementById('ev-local').value.trim() || null,
+        descricao_curta: document.getElementById('ev-desc-curta').value.trim() || null,
+        ativa:           document.getElementById('ev-ativa').checked,
+    }).eq('id', id);
+
+    if (error) { toast('Erro: ' + error.message, 'error'); return; }
+    closeModal();
+    toast('Vaga atualizada!', 'success');
     renderVagas();
 }
 
