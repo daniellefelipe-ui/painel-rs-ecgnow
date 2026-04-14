@@ -574,6 +574,7 @@ async function renderVagas() {
                 ${v.modalidade ? `<span class="badge ${modCls}">${v.modalidade}</span>` : ''}
                 ${v.localizacao ? `<span class="badge bg-gray">${v.localizacao}</span>` : ''}
             </div>
+            ${v.lider ? `<div style="font-size:.76rem;color:var(--muted);margin-top:8px">👤 ${v.lider}</div>` : ''}
             <div class="vc-footer">
                 <div class="vc-count"><strong>${n}</strong> candidato${n !== 1 ? 's' : ''}</div>
                 <span class="vc-link">Ver candidatos →</span>
@@ -1796,6 +1797,22 @@ async function openNovaVagaModal() {
                     </select>
                 </div>
             </div>
+            <div class="form-group">
+                <label>Líder responsável</label>
+                <select id="v-lider">
+                    <option value="">Selecione o líder</option>
+                    <option>Aline Alves Silveira</option>
+                    <option>Barbara Braga Duarte de Souza</option>
+                    <option>Bruno Franciulli Maia</option>
+                    <option>Danielle Felipe Pereira</option>
+                    <option>Gabriel Cesar Romanini de Paula</option>
+                    <option>Marco Antonio Bustamante de Lima</option>
+                    <option>Mayara Luize Almeida Gomes Silva</option>
+                    <option>Renner Lariucci</option>
+                    <option>Rodrigo Aramis da Silva</option>
+                    <option>Vinicius Pinto dos Santos</option>
+                </select>
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Modalidade</label>
@@ -1883,6 +1900,7 @@ async function salvarNovaVaga() {
         setor,
         modalidade:         document.getElementById('v-modalidade').value || null,
         tipo_contrato:      document.getElementById('v-contrato').value || null,
+        lider:              document.getElementById('v-lider').value || null,
         localizacao:        document.getElementById('v-local').value.trim() || null,
         descricao_curta:    document.getElementById('v-desc-curta').value.trim() || null,
         descricao_completa: document.getElementById('v-desc-completa').value.trim() || null,
