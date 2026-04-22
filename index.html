@@ -891,6 +891,11 @@ async function openCandidatoModal(id) {
             ${!isEnd && next ? `<button class="btn btn-primary" onclick="moverEtapa('${id}','${next.k}','${next.l}')">Avançar → ${next.l}</button>` : ''}
             ${!isEnd ? `<button class="btn btn-danger" onclick="moverEtapa('${id}','reprovado','Não avançou')">Não avançar</button>` : ''}
             ${c.etapa === 'reprovado' ? `<button class="btn btn-outline" onclick="moverEtapa('${id}','triagem','Triagem')">↩ Retornar à triagem</button>` : ''}
+            <select onchange="if(this.value){moverEtapa('${id}',this.value,this.options[this.selectedIndex].text);this.value=''}" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:.82rem;color:var(--muted);cursor:pointer">
+                <option value="">↩ Mover para...</option>
+                ${ETAPAS.filter(e => e.k !== c.etapa).map(e => `<option value="${e.k}">${e.l}</option>`).join('')}
+                ${c.etapa !== 'reprovado' ? '<option value="reprovado">Reprovado</option>' : ''}
+            </select>
         </div>`;
 
     // Inicializa estado de edição do Dr. Marco
@@ -2212,7 +2217,7 @@ Seções do relatório:
 // ================================================================
 function renderEcgResultado(testeEcg, candidaturaId) {
     const pct = testeEcg.total_pct ?? 0;
-    const aprovado = testeEcg.aprovado ?? pct >= 75;
+    const aprovado = pct >= 75;
     const cor = aprovado ? '#16a34a' : '#dc2626';
     const comentario = testeEcg.comentario || '';
     const questoes = testeEcg.questoes || [];
@@ -2269,9 +2274,9 @@ function ecgRenderQuestaoItem(q, qi, cid) {
         </div>
         <div style="margin-bottom:6px;line-height:2">${compHtml}</div>
         <div style="font-size:.78rem;color:var(--text);background:rgba(0,0,0,.04);border-radius:5px;padding:5px 8px;margin-bottom:6px"><em>"${q.resposta}"</em></div>
-        <input type="text" value="${alertaVal}" placeholder="⚠️ Alerta (deixe vazio se não houver)"
+        ${q.nota_pct < 100 || q.alerta ? `<input type="text" value="${alertaVal}" placeholder="Alerta (opcional)"
             oninput="ecgEditarAlerta('${cid}',${qi},this.value)"
-            style="width:100%;padding:4px 8px;border:1px solid ${q.alerta ? '#fca5a5' : 'var(--border)'};border-radius:5px;font-size:.75rem;font-family:inherit;color:${q.alerta ? '#c2410c' : 'var(--text)'}">
+            style="width:100%;padding:4px 8px;border:1px solid ${q.alerta ? '#fca5a5' : 'var(--border)'};border-radius:5px;font-size:.75rem;font-family:inherit;color:${q.alerta ? '#c2410c' : 'var(--text)'}">` : ''}
     </div>`;
 }
 
@@ -2358,20 +2363,20 @@ const ECG_GABARITO = {
     2:  ['ritmo ectopico atrial multifocal'],
     3:  ['ritmo sinusal','bloqueio atrioventricular de segundo grau mobitz i','bloqueio de ramo direito','area eletrica inativa inferolateral'],
     4:  ['ritmo sinusal','sobrecarga atrial esquerda','area eletrica inativa inferior'],
-    5:  ['ritmo sinusal','supradesnivelamento de segmento st parede inferolateral','imagem em espelho'],
+    5:  ['ritmo sinusal','supradesnivelamento de segmento st parede inferolateral'],
     6:  ['troca de eletrodos'],
-    7:  ['bloqueio atrioventricular 2:1','bloqueio de ramo esquerdo','desvio do eixo para a direita'],
-    8:  ['bloqueio atrioventricular total','bloqueio de ramo direito','bloqueio divisional anterossuperior esquerdo'],
+    7:  ['bloqueio atrioventricular 2:1','sobrecarga ventricular esquerda','desvio do eixo para a direita'],
+    8:  ['ritmo sinusal','disturbio de conducao pelo ramo direito','bloqueio atrioventricular total intermitente'],
     9:  ['taquicardia supraventricular por reentrada nodal'],
     10: ['ritmo juncional bradicardico'],
-    11: ['taquicardia sinusal','sobrecarga ventricular esquerda','troca de eletrodos v1 e v2'],
-    12: ['taquicardia sinusal','desvio de eixo para a direita','disturbio de conducao pelo ramo direito','bloqueio divisional anterossuperior esquerdo'],
+    11: ['taquicardia sinusal','sobrecarga ventricular esquerda'],
+    12: ['taquicardia sinusal','sobrecarga atrial direita','atraso final de conducao','bloqueio divisional anterossuperior esquerdo'],
     13: ['marcapasso modo aai','bloqueio de ramo esquerdo'],
     14: ['fibrilacao atrial','marcapasso ventricular vvi'],
     15: ['taquicardia atrial','marcapasso ventricular vvi'],
     16: ['BONUS'], // Q16: questão de especialista — todos ganham 1.0 automaticamente
     17: ['fibrilacao atrial','sobrecarga ventricular esquerda'],
-    18: ['ritmo sinusal','area eletrica inativa anterior','area eletrica inativa inferior','sobrecarga ventricular esquerda'],
+    18: ['ritmo sinusal','area eletrica inativa anterior','area eletrica inativa inferior','sobrecarga ventricular esquerda','sobrecarga atrial esquerda'],
     19: ['ritmo sinusal','dentro dos limites da normalidade'],
     20: ['marcapasso modo aai','sobrecarga ventricular esquerda'],
     21: ['velocidade incorreta 50mm/s'],
@@ -2381,7 +2386,7 @@ const ECG_GABARITO = {
     25: ['flutter atrial','intervalo qtc prolongado'],
     26: ['taquicardia supraventricular por reentrada nodal'],
     27: ['ritmo sinusal','dentro da normalidade para a idade'],
-    28: ['ritmo sinusal','sobrecarga biatrial'],
+    28: ['ritmo sinusal','sobrecarga atrial esquerda','sobrecarga atrial direita'],
     29: ['ritmo sinusal','extrassistole ventricular','interferencia'],
     30: ['mobitz i tem alargamento progressivo do pr','mobitz ii tem bloqueio subito com pr fixo'],
 };
